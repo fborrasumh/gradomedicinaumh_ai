@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="light" />
+<title>FlashMed·AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --paper:#FFFFFF; --surface:#FFFFFF; --surface-2:#F4F5F7;
+  --ink:#18222E; --ink-soft:#4A5764; --ink-faint:#8A94A0;
+  --line:#EAEBEE; --line-strong:#DBDDE1;
+  --cat:#5B6B7A; --pulse:#0E8C7F; --pulse-deep:#0A6A60;
+  --garnet:#9B2242; --amber:#C77D1E; --ok:#1E7A54; --danger:#B23A3A;
+  --r:14px; --r-sm:9px; --shadow:0 1px 2px rgba(24,34,46,.05), 0 8px 30px rgba(24,34,46,.06);
+  --mono:"IBM Plex Mono",ui-monospace,monospace; --sans:"Space Grotesk",system-ui,sans-serif; --serif:"Source Serif 4",Georgia,serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){ :root{--paper:#fff;--surface:#fff;--surface-2:#F4F5F7;--ink:#18222E;--line:#EAEBEE;color-scheme:light} html,body{background:#fff!important;color:#18222E!important} }
+*{box-sizing:border-box} html{background:#fff}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--serif); line-height:1.6; -webkit-font-smoothing:antialiased; min-height:100vh; display:flex; flex-direction:column}
+button{font-family:inherit; cursor:pointer}
+:focus-visible{outline:2.5px solid var(--pulse); outline-offset:2px; border-radius:4px}
+
+header.top{position:sticky; top:0; z-index:20; background:color-mix(in srgb,var(--paper) 90%,transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--line)}
+.top-inner{max-width:820px; margin:0 auto; padding:12px 20px; display:flex; align-items:center; gap:14px}
+.brandmark{width:34px;height:34px;flex:none}.brandmark svg{width:100%;height:100%}
+.trace{stroke:var(--pulse); stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:120; stroke-dashoffset:120; animation:sweep 3.2s cubic-bezier(.7,0,.3,1) infinite}
+@keyframes sweep{0%{stroke-dashoffset:120}55%{stroke-dashoffset:0}70%{stroke-dashoffset:0}100%{stroke-dashoffset:-120}}
+@media (prefers-reduced-motion:reduce){.trace{animation:none;stroke-dashoffset:0}}
+.titles{flex:1;min-width:0}
+.titles h1{margin:0; font-family:var(--sans); font-weight:600; font-size:1.02rem; letter-spacing:-.01em}
+.titles .tag{margin:1px 0 0; font-family:var(--mono); font-size:.68rem; color:var(--ink-faint); text-transform:uppercase}
+.head-actions{display:flex;align-items:center;gap:8px}
+.model-pick{font-family:var(--mono); font-size:.74rem; color:var(--ink-soft); background:var(--surface); border:1px solid var(--line-strong); border-radius:999px; padding:7px 12px}
+.icon-btn{width:36px;height:36px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line-strong);border-radius:50%;color:var(--ink-soft)}
+.icon-btn:hover{color:var(--pulse);border-color:var(--pulse)} .icon-btn svg{width:17px;height:17px}
+
+main{flex:1; width:100%; max-width:820px; margin:0 auto; padding:24px 20px 60px}
+
+/* Resumen */
+.summary{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:12px; margin-bottom:22px}
+.stat{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px 18px; box-shadow:var(--shadow)}
+.stat b{font-family:var(--sans); font-size:1.9rem; font-weight:600; display:block; line-height:1}
+.stat.due b{color:var(--pulse-deep)}
+.stat span{font-family:var(--mono); font-size:.66rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint)}
+
+.cta{width:100%; font-family:var(--sans); font-weight:600; font-size:1.05rem; color:#fff; background:var(--pulse); border:none; border-radius:var(--r); padding:16px; margin-bottom:26px; transition:.15s}
+.cta:hover{background:var(--pulse-deep)} .cta:disabled{background:var(--ink-faint); cursor:default}
+
+.section{margin-bottom:26px}
+.section h2{font-family:var(--sans); font-weight:600; font-size:1.05rem; margin:0 0 4px}
+.section p.sub{margin:0 0 12px; color:var(--ink-soft); font-size:.92rem}
+
+textarea, input.txt{width:100%; font-family:var(--serif); font-size:1rem; border:1px solid var(--line-strong); border-radius:var(--r-sm); background:var(--surface-2); color:var(--ink); padding:12px 14px; resize:vertical}
+textarea:focus, input.txt:focus{outline:none; border-color:var(--pulse); background:var(--surface)}
+.row{display:flex; gap:10px; margin-top:10px; flex-wrap:wrap}
+.btn{font-family:var(--sans); font-weight:500; font-size:.92rem; padding:11px 16px; border-radius:var(--r-sm); border:1px solid var(--line-strong); background:var(--surface); color:var(--ink)}
+.btn.primary{background:var(--pulse); color:#fff; border-color:var(--pulse)} .btn.primary:hover{background:var(--pulse-deep)}
+.btn:disabled{opacity:.5; cursor:default}
+
+.filters{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px}
+.f-btn{font-family:var(--mono); font-size:.72rem; padding:6px 12px; border:1px solid var(--line-strong); background:var(--surface); border-radius:999px; color:var(--ink-soft)}
+.f-btn.on{background:var(--ink); color:#fff; border-color:var(--ink)}
+
+.card-row{display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border:1px solid var(--line); border-radius:var(--r-sm); margin-bottom:8px; background:var(--surface)}
+.card-row .cr-main{flex:1; min-width:0}
+.card-row .cr-f{font-family:var(--sans); font-weight:500; font-size:.95rem}
+.card-row .cr-b{color:var(--ink-soft); font-size:.9rem; margin-top:2px}
+.card-row .cr-meta{font-family:var(--mono); font-size:.62rem; color:var(--ink-faint); margin-top:5px; text-transform:uppercase; letter-spacing:.04em}
+.box-pill{font-family:var(--mono); font-size:.6rem; padding:2px 7px; border-radius:999px; border:1px solid var(--line-strong); color:var(--ink-soft)}
+.cr-del{border:none;background:none;color:var(--ink-faint);font-size:1.1rem;padding:2px 6px;border-radius:6px}
+.cr-del:hover{color:var(--danger); background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.empty{font-family:var(--mono); font-size:.82rem; color:var(--ink-faint); text-align:center; padding:34px 12px; border:1px dashed var(--line-strong); border-radius:var(--r)}
+
+/* Repaso a pantalla completa */
+.review{position:fixed; inset:0; background:var(--paper); z-index:60; display:none; flex-direction:column}
+.review.on{display:flex}
+.rv-top{display:flex; align-items:center; gap:14px; padding:16px 20px; border-bottom:1px solid var(--line)}
+.rv-prog{flex:1; font-family:var(--mono); font-size:.74rem; color:var(--ink-faint)}
+.rv-bar{height:5px; background:var(--surface-2); border-radius:99px; overflow:hidden; margin-top:6px}
+.rv-bar i{display:block; height:100%; background:var(--pulse); width:0; transition:width .3s}
+.rv-close{border:none;background:none;color:var(--ink-soft);font-size:1.4rem;line-height:1}
+.rv-body{flex:1; display:flex; align-items:center; justify-content:center; padding:24px}
+.flash{width:100%; max-width:560px; min-height:280px; background:var(--surface); border:1px solid var(--line-strong); border-radius:20px; box-shadow:var(--shadow); padding:34px; display:flex; flex-direction:column; cursor:pointer; position:relative}
+.flash .side-lab{font-family:var(--mono); font-size:.62rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-faint); margin-bottom:14px}
+.flash .content{flex:1; display:flex; align-items:center; justify-content:center; text-align:center; font-size:1.25rem; font-family:var(--sans); font-weight:500}
+.flash .content.back{font-family:var(--serif); font-weight:400; font-size:1.1rem; white-space:pre-wrap}
+.flash .src{position:absolute; bottom:12px; right:16px; font-family:var(--mono); font-size:.6rem; color:var(--ink-faint)}
+.flash .flip-hint{text-align:center; font-family:var(--mono); font-size:.66rem; color:var(--ink-faint)}
+.rv-grade{display:none; gap:10px; padding:16px 20px 26px; max-width:560px; margin:0 auto; width:100%}
+.rv-grade.on{display:flex}
+.grade{flex:1; font-family:var(--sans); font-weight:600; font-size:.92rem; padding:14px; border-radius:var(--r-sm); border:none; color:#fff}
+.grade.mal{background:var(--danger)} .grade.reg{background:var(--amber)} .grade.bien{background:var(--ok)}
+.grade small{display:block; font-family:var(--mono); font-weight:400; font-size:.62rem; opacity:.85; margin-top:2px}
+.rv-done{text-align:center; padding:40px 20px}
+.rv-done h3{font-family:var(--sans); font-size:1.3rem; margin:0 0 8px}
+
+.veil{position:fixed; inset:0; background:rgba(20,28,36,.42); backdrop-filter:blur(3px); display:none; place-items:center; z-index:80; padding:20px}
+.veil.on{display:grid}
+.sheet{background:var(--surface); border-radius:var(--r); max-width:440px; width:100%; box-shadow:0 20px 60px rgba(20,28,36,.28); border:1px solid var(--line); overflow:hidden}
+.sheet-h{padding:20px 22px 0} .sheet-h h3{margin:0 0 4px; font-family:var(--sans); font-weight:600}
+.sheet-h p{margin:0;color:var(--ink-soft); font-size:.88rem}
+.sheet-b{padding:16px 22px 22px}
+.field{width:100%; font-family:var(--mono); font-size:.86rem; padding:11px 13px; border:1px solid var(--line-strong); border-radius:var(--r-sm); background:var(--surface-2)}
+.sheet-actions{display:flex;gap:10px;margin-top:14px}
+.hint{font-family:var(--mono);font-size:.68rem;color:var(--ink-faint);margin-top:10px;line-height:1.5}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;font-family:var(--sans);font-size:.86rem;padding:11px 18px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:.25s;z-index:90}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.foot{max-width:820px;margin:0 auto;padding:20px;font-family:var(--mono);font-size:.68rem;color:var(--ink-faint);text-align:center}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brandmark"><svg viewBox="0 0 34 34"><rect x="1" y="1" width="32" height="32" rx="9" fill="none" stroke="var(--line-strong)"/><path class="trace" d="M4 17 h6 l2.5 -8 l3 15 l3 -11 l2.5 4 h9"/></svg></div>
+    <div class="titles"><h1>FlashMed·AI</h1><div class="tag">Repaso espaciado · Transversal</div></div>
+    <div class="head-actions">
+      <select class="model-pick" id="modelPick" aria-label="Modelo de IA"></select>
+      <button class="icon-btn" id="keyBtn" title="Clave API" aria-label="Clave API"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M17 6l3 3M15 8l2 2"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="summary" id="summary"></div>
+  <button class="cta" id="reviewBtn">Repasar</button>
+
+  <div class="section">
+    <h2>Crear tarjetas con IA</h2>
+    <p class="sub">Pega tus apuntes o escribe un tema y genero tarjetas atómicas para repasar.</p>
+    <textarea id="genInput" rows="4" placeholder="Pega apuntes o escribe un tema (p. ej. «pares craneales» o «insuficiencia cardiaca»)…"></textarea>
+    <div class="row">
+      <button class="btn primary" id="genBtn">Generar tarjetas</button>
+      <button class="btn" id="addManualBtn">Añadir una a mano</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Mazo</h2>
+    <p class="sub">Tarjetas guardadas, incluidas las que envías desde las otras apps del conjunto.</p>
+    <div class="filters" id="filters"></div>
+    <div id="deck"></div>
+  </div>
+</main>
+
+<!-- Repaso -->
+<div class="review" id="review">
+  <div class="rv-top">
+    <div class="rv-prog"><span id="rvCount">0 / 0</span><div class="rv-bar"><i id="rvBar"></i></div></div>
+    <button class="rv-close" id="rvClose" aria-label="Cerrar">✕</button>
+  </div>
+  <div class="rv-body" id="rvBody"></div>
+  <div class="rv-grade" id="rvGrade">
+    <button class="grade mal" data-g="mal">Mal<small id="lblMal">otra vez</small></button>
+    <button class="grade reg" data-g="reg">Regular<small id="lblReg">pronto</small></button>
+    <button class="grade bien" data-g="bien">Bien<small id="lblBien">más tarde</small></button>
+  </div>
+</div>
+
+<!-- Clave -->
+<div class="veil" id="keyVeil"><div class="sheet">
+  <div class="sheet-h"><h3>Tu clave de OpenAI</h3><p>Se guarda solo en este navegador. Nunca se envía a terceros.</p></div>
+  <div class="sheet-b">
+    <input class="field" id="keyField" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false"/>
+    <div class="sheet-actions"><button class="btn" id="keyClear">Borrar</button><button class="btn primary" id="keySave">Guardar</button></div>
+    <div class="hint">Solo se usa para generar tarjetas con IA. El repaso funciona sin clave.</div>
+  </div>
+</div></div>
+
+<!-- Añadir manual -->
+<div class="veil" id="addVeil"><div class="sheet">
+  <div class="sheet-h"><h3>Nueva tarjeta</h3><p>Anverso (pregunta) y reverso (respuesta).</p></div>
+  <div class="sheet-b">
+    <input class="field txt" id="mFront" placeholder="Anverso: pregunta…" style="margin-bottom:10px"/>
+    <input class="field txt" id="mBack" placeholder="Reverso: respuesta…"/>
+    <div class="sheet-actions"><button class="btn" id="mCancel">Cancelar</button><button class="btn primary" id="mSave">Guardar</button></div>
+  </div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+<div class="foot">MEDIA·UMH · Universidad Miguel Hernández de Elche · Tus tarjetas se guardan solo en tu navegador.</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script id="app">
+/* ============ FlashMed·AI — repaso espaciado sobre el almacén compartido ============ */
+const KEY_LS="ia_openai_key", MODEL_LS="ia_model", API_URL="https://api.openai.com/v1/chat/completions";
+const MODELS=[{id:"gpt-4o-mini",label:"gpt-4o-mini"},{id:"gpt-4o",label:"gpt-4o"},{id:"gpt-4.1-mini",label:"gpt-4.1-mini"},{id:"gpt-4.1",label:"gpt-4.1"}];
+const DB_NAME="ia_media_umh", CARDS="flashcards";
+const DAY=86400000;
+const BOX_DAYS={1:0,2:1,3:3,4:7,5:16};   // intervalo Leitner por caja
+const MAXBOX=5;
+
+const $=s=>document.querySelector(s);
+const el=(t,c)=>{const e=document.createElement(t); if(c)e.className=c; return e;};
+function toast(m){const t=$("#toast"); t.textContent=m; t.classList.add("on"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("on"),2600);}
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function getKey(){return localStorage.getItem(KEY_LS)||"";}
+function getModel(){return localStorage.getItem(MODEL_LS)||MODELS[0].id;}
+
+/* ---------- IndexedDB (mismo esquema que el kernel: v2, stores sessions/flashcards/mastery) ---------- */
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const r=indexedDB.open(DB_NAME,2);
+    r.onupgradeneeded=()=>{ const db=r.result;
+      if(!db.objectStoreNames.contains("sessions")){ const os=db.createObjectStore("sessions",{keyPath:"id"}); os.createIndex("app","app",{unique:false}); }
+      if(!db.objectStoreNames.contains(CARDS)){ const os=db.createObjectStore(CARDS,{keyPath:"id"}); os.createIndex("app","app",{unique:false}); os.createIndex("due","due",{unique:false}); }
+      if(!db.objectStoreNames.contains("mastery")){ const os=db.createObjectStore("mastery",{keyPath:"id"}); os.createIndex("app","app",{unique:false}); }
+    };
+    r.onsuccess=()=>resolve(r.result); r.onerror=()=>reject(r.error);
+  });
+}
+function allCards(){
+  return openDB().then(db=>new Promise(res=>{
+    const out=[]; db.transaction(CARDS,"readonly").objectStore(CARDS).openCursor().onsuccess=e=>{ const c=e.target.result; if(c){out.push(c.value); c.continue();} else res(out); };
+  })).catch(()=>[]);
+}
+function putCard(rec){ return openDB().then(db=>{ db.transaction(CARDS,"readwrite").objectStore(CARDS).put(rec); }).catch(()=>{}); }
+function delCard(id){ return openDB().then(db=>{ db.transaction(CARDS,"readwrite").objectStore(CARDS).delete(id); }).catch(()=>{}); }
+function newCard(front, back, app, appTitle){
+  return {id:"card-"+Date.now()+Math.random().toString(36).slice(2,6), app:app||"flashmed", appTitle:appTitle||"FlashMed·AI",
+    front:String(front||"").slice(0,600), back:String(back||"").slice(0,600), box:1, due:Date.now(), ts:Date.now()};
+}
+
+/* ---------- Leitner ---------- */
+function schedule(card, grade){
+  const now=Date.now();
+  if(grade==="mal"){ card.box=1; card.due=now+10*60000; }           // vuelve en ~10 min (fuera de esta sesión)
+  else if(grade==="reg"){ card.due=now+BOX_DAYS[card.box]*DAY; }
+  else { card.box=Math.min(card.box+1,MAXBOX); card.due=now+BOX_DAYS[card.box]*DAY; }
+  card.lastReviewed=now;
+  return card;
+}
+
+/* ---------- Estado y filtros ---------- */
+let filterApp="__all__";
+
+function appLabel(a){ return ({flashmed:"FlashMed",mecanismia:"MecanismIA",rutametabolica:"RutaMetabólica",anatomiaclinica:"AnatomíaClínica",farmacotutor:"FarmacoTutor",microdx:"MicroDx",fisiopatologia:"FisiopatologIA",patocorrela:"PatoCorrela",razonaclinico:"RazonaClínico",labsinterpreta:"LabsInterpreta","ecg-reasoner":"ECG·Reasoner",pruebaimagen:"PruebaImagen","mbe-trainer":"MBE","bioestadmed":"BioestadMed",eticaclinica:"ÉticaClínica",bancomir:"BancoMIR","osce-trainer":"OSCE",guiaconsulta:"GuíaConsulta",pacientevirtual:"PacienteVirtual"})[a]||a; }
+
+async function refresh(){
+  const cards=await allCards();
+  const now=Date.now();
+  const due=cards.filter(c=>c.due<=now);
+  // Resumen
+  const boxes=[1,2,3,4,5].map(b=>cards.filter(c=>c.box===b).length);
+  $("#summary").innerHTML="";
+  const stats=[["due",due.length,"Toca hoy"],["",cards.length,"Total"],["",boxes[4],"Consolidadas"]];
+  stats.forEach(([cls,n,lab])=>{ const s=el("div","stat "+cls); s.innerHTML=`<b>${n}</b><span>${lab}</span>`; $("#summary").appendChild(s); });
+  $("#reviewBtn").textContent = due.length ? `Repasar (${due.length})` : "No toca repasar ahora";
+  $("#reviewBtn").disabled = due.length===0;
+  // Filtros por app
+  const apps=[...new Set(cards.map(c=>c.app))];
+  const fbox=$("#filters"); fbox.innerHTML="";
+  const mk=(id,lab)=>{ const b=el("button","f-btn"+(filterApp===id?" on":"")); b.textContent=lab; b.onclick=()=>{filterApp=id; refresh();}; fbox.appendChild(b); };
+  mk("__all__","Todas ("+cards.length+")");
+  apps.forEach(a=>mk(a, appLabel(a)+" ("+cards.filter(c=>c.app===a).length+")"));
+  // Mazo
+  const deck=$("#deck"); deck.innerHTML="";
+  const shown=cards.filter(c=>filterApp==="__all__"||c.app===filterApp).sort((a,b)=>a.due-b.due);
+  if(!shown.length){ deck.innerHTML='<div class="empty">Aún no hay tarjetas. Genera algunas arriba o guárdalas con «＋ tarjeta» desde las otras apps.</div>'; return; }
+  shown.forEach(c=>{
+    const row=el("div","card-row");
+    const main=el("div","cr-main");
+    const isDue=c.due<=now;
+    main.innerHTML=`<div class="cr-f">${esc(c.front)}</div><div class="cr-b">${esc(c.back)}</div>
+      <div class="cr-meta"><span class="box-pill">caja ${c.box}/5</span> · ${appLabel(c.app)} · ${isDue?"toca hoy":"repaso "+new Date(c.due).toLocaleDateString("es-ES")}</div>`;
+    const del=el("button","cr-del"); del.innerHTML="✕"; del.title="Eliminar"; del.onclick=async()=>{ await delCard(c.id); toast("Tarjeta eliminada"); refresh(); };
+    row.appendChild(main); row.appendChild(del); deck.appendChild(row);
+  });
+}
+
+/* ---------- Sesión de repaso ---------- */
+let queue=[], qi=0, flipped=false;
+async function startReview(){
+  const cards=await allCards(); const now=Date.now();
+  queue=cards.filter(c=>c.due<=now).sort((a,b)=>a.box-b.box || a.due-b.due);
+  if(!queue.length){ toast("No hay tarjetas pendientes"); return; }
+  qi=0; $("#review").classList.add("on"); showCard();
+}
+function showCard(){
+  flipped=false;
+  const c=queue[qi];
+  $("#rvCount").textContent=(qi+1)+" / "+queue.length;
+  $("#rvBar").style.width=Math.round(qi/queue.length*100)+"%";
+  $("#rvGrade").classList.remove("on");
+  const body=$("#rvBody"); body.innerHTML="";
+  const card=el("div","flash");
+  card.innerHTML=`<div class="side-lab">Pregunta</div><div class="content">${esc(c.front)}</div><div class="flip-hint">toca para ver la respuesta</div><div class="src">${appLabel(c.app)}</div>`;
+  card.onclick=()=>flip(card,c);
+  body.appendChild(card);
+}
+function flip(card,c){
+  if(flipped) return; flipped=true;
+  card.innerHTML=`<div class="side-lab">Respuesta</div><div class="content back">${esc(c.back)}</div><div class="src">${appLabel(c.app)}</div>`;
+  $("#rvGrade").classList.add("on");
+}
+async function grade(g){
+  if(!flipped) return;
+  const c=queue[qi];
+  await putCard(schedule(c,g));
+  qi++;
+  if(qi>=queue.length){ finishReview(); } else { showCard(); }
+}
+function finishReview(){
+  $("#rvGrade").classList.remove("on");
+  $("#rvBar").style.width="100%";
+  $("#rvBody").innerHTML=`<div class="rv-done"><h3>Sesión completada ✓</h3><p>Has repasado ${queue.length} tarjeta(s). Vuelve cuando te toque el siguiente repaso.</p><button class="btn primary" id="rvEnd">Volver</button></div>`;
+  $("#rvEnd").onclick=closeReview;
+}
+function closeReview(){ $("#review").classList.remove("on"); refresh(); }
+
+/* ---------- Generación con IA ---------- */
+async function generate(){
+  const text=$("#genInput").value.trim();
+  if(!text){ toast("Escribe un tema o pega apuntes"); return; }
+  if(!getKey()){ openKey(); return; }
+  const btn=$("#genBtn"); btn.disabled=true; btn.textContent="Generando…";
+  try{
+    const res=await fetch(API_URL,{ method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+getKey()},
+      body:JSON.stringify({ model:getModel(), temperature:0.4, messages:[
+        {role:"system",content:"Eres un generador de tarjetas de estudio para repetición espaciada dirigido a estudiantes de Medicina. A partir del texto o tema, crea tarjetas ATÓMICAS (una idea por tarjeta): 'front' = pregunta clara y específica, 'back' = respuesta breve y precisa. Máximo 10 tarjetas. Responde ÚNICAMENTE con un array JSON válido de objetos {\"front\":\"...\",\"back\":\"...\"}, sin markdown ni bloques de código, sin texto adicional."},
+        {role:"user",content:text}
+      ]})
+    });
+    if(!res.ok){ let d=""; try{const j=await res.json(); d=j.error?.message||"";}catch(e){} throw new Error(res.status===401?"Clave no válida":(d||("Error "+res.status))); }
+    const data=await res.json();
+    let raw=(data.choices?.[0]?.message?.content||"").trim().replace(/^```(json)?/i,"").replace(/```$/,"").trim();
+    let arr; try{ arr=JSON.parse(raw); }catch(e){ const m=raw.match(/\[[\s\S]*\]/); arr=m?JSON.parse(m[0]):null; }
+    if(!Array.isArray(arr) || !arr.length) throw new Error("No se pudieron generar tarjetas");
+    let n=0;
+    for(const it of arr){ if(it && it.front && it.back){ await putCard(newCard(it.front,it.back,"flashmed","FlashMed·AI")); n++; } }
+    $("#genInput").value=""; toast(n+" tarjeta(s) creada(s)"); refresh();
+  }catch(err){ toast(err.message||"Error al generar"); }
+  finally{ btn.disabled=false; btn.textContent="Generar tarjetas"; }
+}
+
+/* ---------- Modales ---------- */
+function openKey(){ $("#keyField").value=getKey(); $("#keyVeil").classList.add("on"); setTimeout(()=>$("#keyField").focus(),50); }
+
+/* ---------- Init ---------- */
+function init(){
+  const sel=$("#modelPick"); MODELS.forEach(m=>{const o=el("option"); o.value=m.id; o.textContent=m.label; sel.appendChild(o);}); sel.value=getModel();
+  sel.onchange=()=>{ localStorage.setItem(MODEL_LS,sel.value); toast("Modelo: "+sel.value); };
+  $("#lblReg").textContent="+"+BOX_DAYS[2]+"–"+BOX_DAYS[3]+" d"; // pista de intervalos
+  $("#reviewBtn").onclick=startReview;
+  $("#rvClose").onclick=closeReview;
+  $("#genBtn").onclick=generate;
+  $("#addManualBtn").onclick=()=>{ $("#mFront").value=""; $("#mBack").value=""; $("#addVeil").classList.add("on"); setTimeout(()=>$("#mFront").focus(),50); };
+  $("#mCancel").onclick=()=>$("#addVeil").classList.remove("on");
+  $("#mSave").onclick=async()=>{ const f=$("#mFront").value.trim(), b=$("#mBack").value.trim(); if(!f||!b){ toast("Rellena anverso y reverso"); return; } await putCard(newCard(f,b,"flashmed","FlashMed·AI")); $("#addVeil").classList.remove("on"); toast("Tarjeta guardada"); refresh(); };
+  $("#keyBtn").onclick=openKey;
+  $("#keySave").onclick=()=>{ const v=$("#keyField").value.trim(); if(v)localStorage.setItem(KEY_LS,v); $("#keyVeil").classList.remove("on"); toast("Clave guardada"); };
+  $("#keyClear").onclick=()=>{ localStorage.removeItem(KEY_LS); $("#keyField").value=""; toast("Clave borrada"); };
+  document.querySelectorAll(".grade").forEach(b=>b.onclick=()=>grade(b.dataset.g));
+  document.querySelectorAll(".veil").forEach(v=>v.addEventListener("click",e=>{ if(e.target===v)v.classList.remove("on"); }));
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ document.querySelectorAll(".veil.on").forEach(v=>v.classList.remove("on")); if($("#review").classList.contains("on"))closeReview(); } });
+  refresh();
+}
+document.addEventListener("DOMContentLoaded",init);
+</script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>MEDIA·UMH · IA para el Grado en Medicina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FFFFFF;--surface:#fff;--surface-2:#F4F5F7;--ink:#18222E;--ink-soft:#4A5764;--ink-faint:#8A94A0;--line:#EAEBEE;--line-strong:#DBDDE1;--pulse:#0E8C7F;--pulse-deep:#0A6A60;--sans:"Space Grotesk",system-ui,sans-serif;--serif:"Source Serif 4",Georgia,serif;--mono:"IBM Plex Mono",monospace;color-scheme:light}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);line-height:1.6}
+html{background:#fff}
+@media (prefers-color-scheme:dark){:root{--paper:#fff;--surface:#fff;--surface-2:#F4F5F7;--ink:#18222E;--ink-soft:#4A5764;--ink-faint:#8A94A0;--line:#EAEBEE;--line-strong:#DBDDE1;color-scheme:light}html,body{background:#fff !important;color:#18222E !important}}
+:focus-visible{outline:2.5px solid var(--pulse);outline-offset:2px}
+.wrap{max-width:940px;margin:0 auto;padding:0 22px}
+header{border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--paper) 90%,transparent);position:sticky;top:0;backdrop-filter:blur(8px);z-index:10}
+.eyebrow{font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--pulse-deep)}
+.hero{padding:52px 0 30px}
+.hero-top{display:flex;align-items:center;gap:16px;margin-bottom:22px}
+.mark{width:46px;height:46px;flex:none}.mark svg{width:100%;height:100%}
+.trace{stroke:var(--pulse);stroke-width:2.2;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:120;stroke-dashoffset:120;animation:sweep 3.4s cubic-bezier(.7,0,.3,1) infinite}
+@keyframes sweep{0%{stroke-dashoffset:120}55%{stroke-dashoffset:0}70%{stroke-dashoffset:0}100%{stroke-dashoffset:-120}}
+@media(prefers-reduced-motion:reduce){.trace{animation:none;stroke-dashoffset:0}}
+h1{font-family:var(--sans);font-weight:700;font-size:2.5rem;letter-spacing:-.025em;line-height:1.05;margin:0}
+h1 .thin{color:var(--ink-faint);font-weight:400}
+.lede{font-size:1.12rem;color:var(--ink-soft);max-width:60ch;margin:16px 0 0}
+.stats{display:flex;gap:30px;margin-top:26px;flex-wrap:wrap}
+.stat{font-family:var(--mono)}.stat b{font-family:var(--sans);font-size:1.7rem;font-weight:600;display:block;line-height:1}
+.stat span{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint)}
+.controls{display:flex;gap:14px;align-items:center;margin:34px 0 18px;flex-wrap:wrap}
+.search{flex:1;min-width:200px;font-family:var(--serif);font-size:1rem;padding:11px 15px;border:1px solid var(--line-strong);border-radius:11px;background:var(--surface)}
+.search:focus{outline:none;border-color:var(--pulse)}
+.filters{display:flex;gap:7px;flex-wrap:wrap}
+.f-btn{font-family:var(--mono);font-size:.74rem;padding:7px 13px;border:1px solid var(--line-strong);background:var(--surface);border-radius:999px;color:var(--ink-soft);cursor:pointer;transition:.15s}
+.f-btn:hover{border-color:var(--pulse);color:var(--pulse-deep)}.f-btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+table{width:100%;border-collapse:collapse;margin-bottom:50px}
+thead th{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line-strong)}
+tbody td{padding:15px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr{transition:background .12s}tbody tr:hover{background:var(--surface-2)}
+.c-tool a{font-family:var(--sans);font-weight:600;font-size:1.02rem;color:var(--ink);text-decoration:none}
+.c-tool a:hover{color:var(--pulse-deep)}
+.c-phase{display:block;font-family:var(--mono);font-size:.66rem;color:var(--ink-faint);margin-top:3px;text-transform:uppercase;letter-spacing:.04em}
+.c-vis{color:var(--pulse-deep);border:1px solid color-mix(in srgb,var(--pulse) 34%,transparent);border-radius:999px;padding:1px 6px;text-transform:uppercase}
+.c-desc{color:var(--ink-soft);font-size:.95rem}
+.c-badge{font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:var(--b);background:color-mix(in srgb,var(--b) 12%,#fff);border:1px solid color-mix(in srgb,var(--b) 32%,transparent);padding:4px 10px;border-radius:999px;white-space:nowrap}
+.nores{text-align:center;color:var(--ink-faint);font-family:var(--mono);font-size:.85rem;padding:40px}
+footer{border-top:1px solid var(--line);padding:26px 0 40px;font-family:var(--mono);font-size:.72rem;color:var(--ink-faint)}
+footer a{color:var(--ink-soft)}
+@media(max-width:600px){h1{font-size:1.9rem}.hero{padding:34px 0 20px}.c-desc{display:none}}
+</style>
+</head>
+<body>
+<header><div class="wrap" style="padding-top:14px;padding-bottom:14px;display:flex;align-items:center;gap:12px">
+  <div class="mark"><svg viewBox="0 0 46 46"><rect x="1" y="1" width="44" height="44" rx="12" fill="none" stroke="var(--line-strong)"/><path class="trace" d="M6 23 h8 l3 -10 l4 19 l4 -14 l3 5 h12"/></svg></div>
+  <div><div class="eyebrow">MEDIA·UMH</div><div style="font-family:var(--sans);font-weight:600">IA para el Grado en Medicina</div></div>
+</div></header>
+
+<div class="wrap">
+  <section class="hero">
+    <div class="hero-top"></div>
+    <div class="eyebrow">Universidad Miguel Hernández de Elche</div>
+    <h1>Aprender medicina<br><span class="thin">razonando, no memorizando.</span></h1>
+    <p class="lede">Un conjunto de asistentes de IA para las tres fases del grado: comprender mecanismos, entrenar el razonamiento clínico y practicar con feedback. Todo en el navegador, con tu clave de OpenAI.</p>
+    <div class="stats">
+      <div class="stat"><b>20</b><span>Herramientas</span></div>
+      <div class="stat"><b>3</b><span>Fases del grado</span></div>
+      <div class="stat"><b>100%</b><span>En el navegador</span></div>
+    </div>
+  </section>
+
+  <div class="controls">
+    <input class="search" id="q" type="search" placeholder="Buscar herramienta…" aria-label="Buscar">
+    <div class="filters"><button class="f-btn on" data-f="Todas">Todas</button>
+<button class="f-btn" data-f="Docencia">Docencia</button>
+<button class="f-btn" data-f="Evaluación">Evaluación</button>
+<button class="f-btn" data-f="Investigación">Investigación</button>
+<button class="f-btn" data-f="Simulación">Simulación</button>
+<button class="f-btn" data-f="Utilidades">Utilidades</button></div>
+  </div>
+
+  <table>
+    <thead><tr><th>Herramienta</th><th>Enfoque</th><th>Categoría</th></tr></thead>
+    <tbody id="tb">
+<tr data-cat="Docencia" data-txt="mecanismia tutor socrático de fisiología"><td class="c-tool"><a href="mecanismia.html">MecanismIA</a><span class="c-phase">Básica · 1º–2º</span></td><td class="c-desc">Tutor socrático de fisiología</td><td><span class="c-badge" style="--b:#0E8C7F">Docencia</span></td></tr>
+<tr data-cat="Docencia" data-txt="rutametabólica·ai bioquímica con correlación clínica"><td class="c-tool"><a href="rutametabolica.html">RutaMetabólica·AI</a><span class="c-phase">Básica · 1º–2º</span></td><td class="c-desc">Bioquímica con correlación clínica</td><td><span class="c-badge" style="--b:#0E8C7F">Docencia</span></td></tr>
+<tr data-cat="Docencia" data-txt="anatomíaclínica·ai anatomía por correlación funcional"><td class="c-tool"><a href="anatomiaclinica.html">AnatomíaClínica·AI</a><span class="c-phase">Básica · 1º–2º · <span class=c-vis>visión</span></span></td><td class="c-desc">Anatomía por correlación funcional</td><td><span class="c-badge" style="--b:#0E8C7F">Docencia</span></td></tr>
+<tr data-cat="Docencia" data-txt="histodescribe·ai identificación histológica sobre imagen"><td class="c-tool"><a href="histodescribe.html">HistoDescribe·AI</a><span class="c-phase">Básica · 1º–2º · <span class=c-vis>visión</span></span></td><td class="c-desc">Identificación histológica sobre imagen</td><td><span class="c-badge" style="--b:#0E8C7F">Docencia</span></td></tr>
+<tr data-cat="Docencia" data-txt="farmacotutor·ai farmacología y prescripción razonada"><td class="c-tool"><a href="farmacotutor.html">FarmacoTutor·AI</a><span class="c-phase">Preclínica · 2º–3º</span></td><td class="c-desc">Farmacología y prescripción razonada</td><td><span class="c-badge" style="--b:#0E8C7F">Docencia</span></td></tr>
+<tr data-cat="Simulación" data-txt="microdx·ai del síndrome al diagnóstico microbiológico"><td class="c-tool"><a href="microdx.html">MicroDx·AI</a><span class="c-phase">Preclínica · 2º–3º · <span class=c-vis>visión</span></span></td><td class="c-desc">Del síndrome al diagnóstico microbiológico</td><td><span class="c-badge" style="--b:#C77D1E">Simulación</span></td></tr>
+<tr data-cat="Docencia" data-txt="fisiopatologia cadenas causales de enfermedad"><td class="c-tool"><a href="fisiopatologia.html">FisiopatologIA</a><span class="c-phase">Preclínica · 2º–3º</span></td><td class="c-desc">Cadenas causales de enfermedad</td><td><span class="c-badge" style="--b:#0E8C7F">Docencia</span></td></tr>
+<tr data-cat="Docencia" data-txt="patocorrela·ai correlación anatomopatológica"><td class="c-tool"><a href="patocorrela.html">PatoCorrela·AI</a><span class="c-phase">Preclínica · 2º–3º · <span class=c-vis>visión</span></span></td><td class="c-desc">Correlación anatomopatológica</td><td><span class="c-badge" style="--b:#0E8C7F">Docencia</span></td></tr>
+<tr data-cat="Simulación" data-txt="razonaclínico·ai razonamiento hipotético-deductivo"><td class="c-tool"><a href="razonaclinico.html">RazonaClínico·AI</a><span class="c-phase">Clínica · 4º–6º</span></td><td class="c-desc">Razonamiento hipotético-deductivo</td><td><span class="c-badge" style="--b:#C77D1E">Simulación</span></td></tr>
+<tr data-cat="Evaluación" data-txt="osce·trainer estaciones ecoe con rúbrica"><td class="c-tool"><a href="osce-trainer.html">OSCE·Trainer</a><span class="c-phase">Clínica · 4º–6º · <span class=c-vis>visión</span></span></td><td class="c-desc">Estaciones ECOE con rúbrica</td><td><span class="c-badge" style="--b:#9B2242">Evaluación</span></td></tr>
+<tr data-cat="Docencia" data-txt="labsinterpreta·ai interpretación razonada de laboratorio"><td class="c-tool"><a href="labsinterpreta.html">LabsInterpreta·AI</a><span class="c-phase">Clínica · 4º–6º · <span class=c-vis>visión</span></span></td><td class="c-desc">Interpretación razonada de laboratorio</td><td><span class="c-badge" style="--b:#0E8C7F">Docencia</span></td></tr>
+<tr data-cat="Docencia" data-txt="ecg·reasoner lectura sistemática del ecg sobre imagen"><td class="c-tool"><a href="ecg-reasoner.html">ECG·Reasoner</a><span class="c-phase">Clínica · 4º–6º · <span class=c-vis>visión</span></span></td><td class="c-desc">Lectura sistemática del ECG sobre imagen</td><td><span class="c-badge" style="--b:#0E8C7F">Docencia</span></td></tr>
+<tr data-cat="Simulación" data-txt="pacientevirtual·ai anamnesis con paciente simulado"><td class="c-tool"><a href="pacientevirtual.html">PacienteVirtual·AI</a><span class="c-phase">Clínica · 4º–6º</span></td><td class="c-desc">Anamnesis con paciente simulado</td><td><span class="c-badge" style="--b:#C77D1E">Simulación</span></td></tr>
+<tr data-cat="Docencia" data-txt="pruebaimagen·ai razonamiento sobre pruebas de imagen"><td class="c-tool"><a href="pruebaimagen.html">PruebaImagen·AI</a><span class="c-phase">Clínica · 4º–6º · <span class=c-vis>visión</span></span></td><td class="c-desc">Razonamiento sobre pruebas de imagen</td><td><span class="c-badge" style="--b:#0E8C7F">Docencia</span></td></tr>
+<tr data-cat="Investigación" data-txt="mbe·trainer lectura crítica y medicina basada en evidencia"><td class="c-tool"><a href="mbe-trainer.html">MBE·Trainer</a><span class="c-phase">Transversal</span></td><td class="c-desc">Lectura crítica y medicina basada en evidencia</td><td><span class="c-badge" style="--b:#3D5A98">Investigación</span></td></tr>
+<tr data-cat="Investigación" data-txt="bioestadmed·ai estadística de artículos médicos"><td class="c-tool"><a href="bioestadmed.html">BioestadMed·AI</a><span class="c-phase">Transversal</span></td><td class="c-desc">Estadística de artículos médicos</td><td><span class="c-badge" style="--b:#3D5A98">Investigación</span></td></tr>
+<tr data-cat="Docencia" data-txt="éticaclínica·ai deliberación de dilemas bioéticos"><td class="c-tool"><a href="eticaclinica.html">ÉticaClínica·AI</a><span class="c-phase">Transversal</span></td><td class="c-desc">Deliberación de dilemas bioéticos</td><td><span class="c-badge" style="--b:#0E8C7F">Docencia</span></td></tr>
+<tr data-cat="Evaluación" data-txt="bancomir·ai preguntas tipo test razonadas"><td class="c-tool"><a href="bancomir.html">BancoMIR·AI</a><span class="c-phase">Transversal</span></td><td class="c-desc">Preguntas tipo test razonadas</td><td><span class="c-badge" style="--b:#9B2242">Evaluación</span></td></tr>
+<tr data-cat="Utilidades" data-txt="flashmed·ai repetición espaciada"><td class="c-tool"><a href="flashmed.html">FlashMed·AI</a><span class="c-phase">Transversal</span></td><td class="c-desc">Repetición espaciada</td><td><span class="c-badge" style="--b:#5B6B7A">Utilidades</span></td></tr>
+<tr data-cat="Investigación" data-txt="guíaconsulta·ai consulta de guías clínicas"><td class="c-tool"><a href="guiaconsulta.html">GuíaConsulta·AI</a><span class="c-phase">Transversal</span></td><td class="c-desc">Consulta de guías clínicas</td><td><span class="c-badge" style="--b:#3D5A98">Investigación</span></td></tr>
+    </tbody>
+  </table>
+  <div class="nores" id="noRes" hidden>Sin resultados para tu búsqueda.</div>
+</div>
+
+<footer><div class="wrap">
+  Desarrollado por <a href="https://github.com/fborrasumh">@fborrasumh</a> · Universidad Miguel Hernández de Elche ·
+  Tu clave de OpenAI se guarda solo en tu navegador. Herramienta de aprendizaje; no sustituye juicio clínico ni docente.
+</div></footer>
+
+<script>
+const q=document.getElementById("q"),tb=document.getElementById("tb"),noRes=document.getElementById("noRes");
+let cat="Todas";
+function apply(){
+  const t=q.value.trim().toLowerCase();let n=0;
+  tb.querySelectorAll("tr").forEach(r=>{
+    const okC=cat==="Todas"||r.dataset.cat===cat;
+    const okT=!t||r.dataset.txt.includes(t);
+    const show=okC&&okT;r.style.display=show?"":"none";if(show)n++;
+  });
+  noRes.hidden=n>0;
+}
+q.addEventListener("input",apply);
+document.querySelectorAll(".f-btn").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".f-btn").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");cat=b.dataset.f;apply();
+});
+</script>
+</body>
+</html>
