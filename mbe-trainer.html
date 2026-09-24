@@ -1,6 +1,64 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script id="gpt6-luna-shim">
+/* gpt-6-luna: modelo por defecto con temperatura=1 (actualización sep-2026).
+   Adapta las peticiones a la API de OpenAI para la familia gpt-6:
+   temperature=1, max_tokens -> max_completion_tokens (con margen para razonamiento)
+   y reintento automático si la API rechaza algún parámetro. */
+(function(){
+  var NEW='gpt-6-luna', OLD='gpt-4o-mini';
+  try{
+    if(!localStorage.getItem('__gpt6_luna_mig_v1')){
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i), v=localStorage.getItem(k);
+        if(v===OLD||v==='"'+OLD+'"'){ localStorage.setItem(k, v.replace(OLD,NEW)); continue; }
+        if(v && v.length<20000 && v.charAt(0)==='{' && v.indexOf(OLD)>=0){
+          try{ var o=JSON.parse(v), ch=false;
+            for(var p in o){ if(o[p]===OLD){ o[p]=NEW; ch=true; } }
+            if(ch) localStorage.setItem(k, JSON.stringify(o));
+          }catch(e){}
+        }
+      }
+      localStorage.setItem('__gpt6_luna_mig_v1','1');
+    }
+  }catch(e){}
+  var of=window.fetch; if(!of) return;
+  function adapt(url,b){
+    if(!b || typeof b.model!=='string' || !/^gpt-6/.test(b.model)) return false;
+    b.temperature=1;
+    ['top_p','frequency_penalty','presence_penalty','logit_bias','logprobs','top_logprobs'].forEach(function(p){ delete b[p]; });
+    if(/chat\/completions/.test(url) && b.max_tokens!=null){
+      if(b.max_completion_tokens==null) b.max_completion_tokens=Math.min(128000, (+b.max_tokens||0)+6000);
+      delete b.max_tokens;
+    }
+    return true;
+  }
+  window.fetch=function(input,init){
+    var url=typeof input==='string'?input:(input&&input.url)||'';
+    if(!/api\.openai\.com\/v1\/(chat\/completions|responses)/.test(url) || !init || typeof init.body!=='string') return of.apply(this,arguments);
+    var b; try{ b=JSON.parse(init.body); }catch(e){ return of.apply(this,arguments); }
+    if(!adapt(url,b)) return of.apply(this,arguments);
+    var self=this, tries=0;
+    function go(){
+      var ini=Object.assign({},init,{body:JSON.stringify(b)});
+      return of.call(self,input,ini).then(function(r){
+        if(r.status!==400 || tries>=3) return r;
+        return r.clone().json().then(function(j){
+          var err=(j&&j.error)||{}, p=err.param, msg=String(err.message||'');
+          if(!p){ var m=msg.match(/'([a-z_]+)'/); if(m) p=m[1]; }
+          if(p && b.hasOwnProperty(p) && /unsupported|not supported|does not support|only the default/i.test(msg)){
+            delete b[p]; tries++; return go();
+          }
+          return r;
+        },function(){ return r; });
+      });
+    }
+    return go();
+  };
+})();
+</script>
+
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light" />
@@ -374,7 +432,7 @@ main{flex:1; width:100%; max-width:900px; margin:0 auto; padding:0 20px}
         <button class="btn" id="keyClear">Borrar</button>
         <button class="btn primary" id="keySave">Guardar</button>
       </div>
-      <div class="hint">Consíguela en platform.openai.com/api-keys · Modelo por defecto: gpt-4o-mini</div>
+      <div class="hint">Consíguela en platform.openai.com/api-keys · Modelo por defecto: gpt-6-luna</div>
     </div>
   </div>
 </div>
@@ -403,13 +461,13 @@ main{flex:1; width:100%; max-width:900px; margin:0 auto; padding:0 20px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 
 <script id="app">
-window.__APP_CONFIG__ = {"id": "mbe-trainer", "title": "MBE·Trainer", "tagline": "Lectura crítica y medicina basada en evidencia", "category": "Investigación", "cat": "#3D5A98", "phase": "Transversal", "welcome": "Pega el resumen (abstract) de un artículo o plantea una pregunta clínica. Trabajamos MBE paso a paso: formular en PICO, valorar validez y sesgos, e interpretar las medidas de efecto (RR, OR, NNT) con sus intervalos de confianza y su relevancia clínica. Elige una herramienta abajo.", "systemPrompt": "Eres un tutor de la Facultad de Medicina de la Universidad Miguel Hernández (UMH). Te diriges a estudiantes de grado. Responde en español claro y riguroso, con nivel de facultad, apoyándote en fisiopatología y evidencia. Usa Markdown (encabezados, listas, negritas) para estructurar. Sé conciso pero completo. Eres una herramienta de APRENDIZAJE: no diagnosticas ni tratas pacientes reales; si el estudiante plantea un caso real y urgente, recuérdale que debe consultar a un clínico responsable. Entrenas lectura crítica y medicina basada en la evidencia (autor: profesor de Estadística de la UMH; mantén el rigor). Enseña a: formular preguntas en formato PICO; identificar el diseño del estudio y su nivel de evidencia; valorar la validez interna (aleatorización, cegamiento, seguimiento, análisis por intención de tratar) y los sesgos; e interpretar las medidas de efecto (RR, RRA, RRR, OR, HR, NNT) con sus intervalos de confianza y su relevancia clínica frente a la estadística. Cuando el estudiante pegue un abstract, estructura el análisis (diseño, validez, resultado, aplicabilidad) y pídele su valoración antes de dar la tuya. En los cálculos, pide los datos, guía paso a paso mostrando las unidades y verifica el resultado; deja que lo intente primero. Aplica el marco de tres pasos (¿válido? → ¿importante? → ¿aplicable?). Cuando ayude, genera un DIAGRAMA en un bloque ```mermaid``` con 'flowchart TD' del flujo de lectura crítica o del árbol de elección de diseño. Fomenta el escepticismo razonado, no el nihilismo. No inventes datos de estudios que no conozcas con seguridad.", "chips": ["Formular una pregunta en PICO", "¿Cómo calculo e interpreto el NNT?", "Sesgos de un ensayo clínico", "Diferencia entre RR y OR"], "placeholder": "Pega el abstract o plantea la pregunta…", "temperature": 0.35, "vision": false, "defaultModel": "gpt-4o-mini", "menu": [{"group": "Formular y buscar", "items": ["Convertir una duda en PICO", "¿Qué diseño responde mi pregunta?", "Niveles de evidencia y grados de recomendación", "Tipos de pregunta (tratamiento, diagnóstico, pronóstico)"]}, {"group": "Medidas de efecto", "items": ["Diferencia entre RR y OR", "¿Cómo calculo e interpreto el NNT?", "Interpretar un intervalo de confianza", "Sensibilidad, especificidad y razones de verosimilitud"]}, {"group": "Validez y sesgos", "items": ["Sesgos de un ensayo clínico", "Factores de confusión", "Análisis por intención de tratar", "Significación estadística vs relevancia clínica"]}], "actions": [{"label": "❓ Formular en PICO", "send": "Ayúdame a convertir mi duda clínica en una pregunta estructurada PICO (Paciente/Problema, Intervención, Comparación, Outcome) y sugiéreme el diseño de estudio más adecuado para responderla."}, {"label": "🔎 Analizar este abstract", "send": "Voy a pegar un resumen (abstract). Identifica el tipo de estudio y su nivel de evidencia, valora la validez interna (aleatorización, cegamiento, seguimiento, análisis por intención de tratar) y los sesgos, y resume la medida de efecto y su intervalo de confianza. Pídeme mi valoración antes de darme la tuya."}, {"label": "🧮 Calcular NNT/RR/OR", "send": "Activa el modo cálculo: pídeme los datos (tabla 2×2 o incidencias) y guía paso a paso el cálculo de RRA, RRR, RR, OR y NNT mostrando las UNIDADES, e interpreta cada resultado con su intervalo de confianza y su relevancia clínica. Deja que lo intente antes de darme el número."}, {"label": "⚠️ Detector de sesgos", "send": "Dado el diseño del estudio, enumera conmigo los sesgos más probables (selección, información/medición, confusión, pérdidas, publicación) y cómo afectarían al resultado y a mis conclusiones."}, {"label": "🚦 ¿Me lo creo?", "send": "Aplica el semáforo de lectura crítica en tres pasos: 1) ¿es VÁLIDO? (validez interna), 2) ¿es IMPORTANTE? (magnitud del efecto e IC), 3) ¿es APLICABLE a mi paciente? Dame un veredicto razonado en cada paso."}, {"label": "🃏 Tarjeta de alto rendimiento", "send": "Propón una tarjeta con un concepto clave de MBE (p. ej. «NNT: qué es, cómo se calcula, cómo se interpreta») para que la guarde."}], "levels": [{"label": "Voy justo", "directive": "El estudiante va justo: define cada término (validez interna, sesgo, IC), pasos pequeños y ejemplos sencillos."}, {"label": "Nivel medio", "directive": "Nivel intermedio: ritmo normal, aplica los conceptos a artículos reales."}, {"label": "Quiero afinar", "directive": "Nivel avanzado: análisis por intención de tratar, heterogeneidad, sesgo de publicación, medidas ajustadas y matices metodológicos."}], "langs": null, "mastery": "destreza MBE", "flashcards": true, "docs": false};
+window.__APP_CONFIG__ = {"id": "mbe-trainer", "title": "MBE·Trainer", "tagline": "Lectura crítica y medicina basada en evidencia", "category": "Investigación", "cat": "#3D5A98", "phase": "Transversal", "welcome": "Pega el resumen (abstract) de un artículo o plantea una pregunta clínica. Trabajamos MBE paso a paso: formular en PICO, valorar validez y sesgos, e interpretar las medidas de efecto (RR, OR, NNT) con sus intervalos de confianza y su relevancia clínica. Elige una herramienta abajo.", "systemPrompt": "Eres un tutor de la Facultad de Medicina de la Universidad Miguel Hernández (UMH). Te diriges a estudiantes de grado. Responde en español claro y riguroso, con nivel de facultad, apoyándote en fisiopatología y evidencia. Usa Markdown (encabezados, listas, negritas) para estructurar. Sé conciso pero completo. Eres una herramienta de APRENDIZAJE: no diagnosticas ni tratas pacientes reales; si el estudiante plantea un caso real y urgente, recuérdale que debe consultar a un clínico responsable. Entrenas lectura crítica y medicina basada en la evidencia (autor: profesor de Estadística de la UMH; mantén el rigor). Enseña a: formular preguntas en formato PICO; identificar el diseño del estudio y su nivel de evidencia; valorar la validez interna (aleatorización, cegamiento, seguimiento, análisis por intención de tratar) y los sesgos; e interpretar las medidas de efecto (RR, RRA, RRR, OR, HR, NNT) con sus intervalos de confianza y su relevancia clínica frente a la estadística. Cuando el estudiante pegue un abstract, estructura el análisis (diseño, validez, resultado, aplicabilidad) y pídele su valoración antes de dar la tuya. En los cálculos, pide los datos, guía paso a paso mostrando las unidades y verifica el resultado; deja que lo intente primero. Aplica el marco de tres pasos (¿válido? → ¿importante? → ¿aplicable?). Cuando ayude, genera un DIAGRAMA en un bloque ```mermaid``` con 'flowchart TD' del flujo de lectura crítica o del árbol de elección de diseño. Fomenta el escepticismo razonado, no el nihilismo. No inventes datos de estudios que no conozcas con seguridad.", "chips": ["Formular una pregunta en PICO", "¿Cómo calculo e interpreto el NNT?", "Sesgos de un ensayo clínico", "Diferencia entre RR y OR"], "placeholder": "Pega el abstract o plantea la pregunta…", "temperature": 0.35, "vision": false, "defaultModel": "gpt-6-luna", "menu": [{"group": "Formular y buscar", "items": ["Convertir una duda en PICO", "¿Qué diseño responde mi pregunta?", "Niveles de evidencia y grados de recomendación", "Tipos de pregunta (tratamiento, diagnóstico, pronóstico)"]}, {"group": "Medidas de efecto", "items": ["Diferencia entre RR y OR", "¿Cómo calculo e interpreto el NNT?", "Interpretar un intervalo de confianza", "Sensibilidad, especificidad y razones de verosimilitud"]}, {"group": "Validez y sesgos", "items": ["Sesgos de un ensayo clínico", "Factores de confusión", "Análisis por intención de tratar", "Significación estadística vs relevancia clínica"]}], "actions": [{"label": "❓ Formular en PICO", "send": "Ayúdame a convertir mi duda clínica en una pregunta estructurada PICO (Paciente/Problema, Intervención, Comparación, Outcome) y sugiéreme el diseño de estudio más adecuado para responderla."}, {"label": "🔎 Analizar este abstract", "send": "Voy a pegar un resumen (abstract). Identifica el tipo de estudio y su nivel de evidencia, valora la validez interna (aleatorización, cegamiento, seguimiento, análisis por intención de tratar) y los sesgos, y resume la medida de efecto y su intervalo de confianza. Pídeme mi valoración antes de darme la tuya."}, {"label": "🧮 Calcular NNT/RR/OR", "send": "Activa el modo cálculo: pídeme los datos (tabla 2×2 o incidencias) y guía paso a paso el cálculo de RRA, RRR, RR, OR y NNT mostrando las UNIDADES, e interpreta cada resultado con su intervalo de confianza y su relevancia clínica. Deja que lo intente antes de darme el número."}, {"label": "⚠️ Detector de sesgos", "send": "Dado el diseño del estudio, enumera conmigo los sesgos más probables (selección, información/medición, confusión, pérdidas, publicación) y cómo afectarían al resultado y a mis conclusiones."}, {"label": "🚦 ¿Me lo creo?", "send": "Aplica el semáforo de lectura crítica en tres pasos: 1) ¿es VÁLIDO? (validez interna), 2) ¿es IMPORTANTE? (magnitud del efecto e IC), 3) ¿es APLICABLE a mi paciente? Dame un veredicto razonado en cada paso."}, {"label": "🃏 Tarjeta de alto rendimiento", "send": "Propón una tarjeta con un concepto clave de MBE (p. ej. «NNT: qué es, cómo se calcula, cómo se interpreta») para que la guarde."}], "levels": [{"label": "Voy justo", "directive": "El estudiante va justo: define cada término (validez interna, sesgo, IC), pasos pequeños y ejemplos sencillos."}, {"label": "Nivel medio", "directive": "Nivel intermedio: ritmo normal, aplica los conceptos a artículos reales."}, {"label": "Quiero afinar", "directive": "Nivel avanzado: análisis por intención de tratar, heterogeneidad, sesgo de publicación, medidas ajustadas y matices metodológicos."}], "langs": null, "mastery": "destreza MBE", "flashcards": true, "docs": false};
 const APP_CONFIG = (typeof window!=="undefined" && window.__APP_CONFIG__) || {
   id:"kernel", title:"MEDIA·UMH · kernel", tagline:"plantilla base",
   category:"Utilidades", cat:"#0E8C7F", phase:"—",
   welcome:"Este es el kernel base. Inyecta APP_CONFIG para especializarlo.",
   systemPrompt:"Eres un tutor de medicina para estudiantes de la UMH.",
-  chips:[], placeholder:"Escribe aquí…", temperature:0.5, vision:false, defaultModel:"gpt-4o-mini",
+  chips:[], placeholder:"Escribe aquí…", temperature:0.5, vision:false, defaultModel:"gpt-6-luna",
   menu:null,       // [{group, items:[...]}]  menú de arranque agrupado (si no, usa chips)
   actions:null,    // [{label, send} | {label, cycle:[...]}]  botones de acción / pistas graduadas
   levels:null,     // [{label, directive}]  selector de profundidad
@@ -421,7 +479,7 @@ const APP_CONFIG = (typeof window!=="undefined" && window.__APP_CONFIG__) || {
 
 /* ---------- Constantes ---------- */
 const MODELS = [
-  {id:"gpt-4o-mini", label:"gpt-4o-mini"},
+  {id:"gpt-6-luna", label:"gpt-6-luna"}, {id:"gpt-4o-mini", label:"gpt-4o-mini"},
   {id:"gpt-4o",      label:"gpt-4o"},
   {id:"gpt-4.1-mini",label:"gpt-4.1-mini"},
   {id:"gpt-4.1",     label:"gpt-4.1"}

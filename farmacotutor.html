@@ -1,6 +1,64 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script id="gpt6-luna-shim">
+/* gpt-6-luna: modelo por defecto con temperatura=1 (actualización sep-2026).
+   Adapta las peticiones a la API de OpenAI para la familia gpt-6:
+   temperature=1, max_tokens -> max_completion_tokens (con margen para razonamiento)
+   y reintento automático si la API rechaza algún parámetro. */
+(function(){
+  var NEW='gpt-6-luna', OLD='gpt-4o-mini';
+  try{
+    if(!localStorage.getItem('__gpt6_luna_mig_v1')){
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i), v=localStorage.getItem(k);
+        if(v===OLD||v==='"'+OLD+'"'){ localStorage.setItem(k, v.replace(OLD,NEW)); continue; }
+        if(v && v.length<20000 && v.charAt(0)==='{' && v.indexOf(OLD)>=0){
+          try{ var o=JSON.parse(v), ch=false;
+            for(var p in o){ if(o[p]===OLD){ o[p]=NEW; ch=true; } }
+            if(ch) localStorage.setItem(k, JSON.stringify(o));
+          }catch(e){}
+        }
+      }
+      localStorage.setItem('__gpt6_luna_mig_v1','1');
+    }
+  }catch(e){}
+  var of=window.fetch; if(!of) return;
+  function adapt(url,b){
+    if(!b || typeof b.model!=='string' || !/^gpt-6/.test(b.model)) return false;
+    b.temperature=1;
+    ['top_p','frequency_penalty','presence_penalty','logit_bias','logprobs','top_logprobs'].forEach(function(p){ delete b[p]; });
+    if(/chat\/completions/.test(url) && b.max_tokens!=null){
+      if(b.max_completion_tokens==null) b.max_completion_tokens=Math.min(128000, (+b.max_tokens||0)+6000);
+      delete b.max_tokens;
+    }
+    return true;
+  }
+  window.fetch=function(input,init){
+    var url=typeof input==='string'?input:(input&&input.url)||'';
+    if(!/api\.openai\.com\/v1\/(chat\/completions|responses)/.test(url) || !init || typeof init.body!=='string') return of.apply(this,arguments);
+    var b; try{ b=JSON.parse(init.body); }catch(e){ return of.apply(this,arguments); }
+    if(!adapt(url,b)) return of.apply(this,arguments);
+    var self=this, tries=0;
+    function go(){
+      var ini=Object.assign({},init,{body:JSON.stringify(b)});
+      return of.call(self,input,ini).then(function(r){
+        if(r.status!==400 || tries>=3) return r;
+        return r.clone().json().then(function(j){
+          var err=(j&&j.error)||{}, p=err.param, msg=String(err.message||'');
+          if(!p){ var m=msg.match(/'([a-z_]+)'/); if(m) p=m[1]; }
+          if(p && b.hasOwnProperty(p) && /unsupported|not supported|does not support|only the default/i.test(msg)){
+            delete b[p]; tries++; return go();
+          }
+          return r;
+        },function(){ return r; });
+      });
+    }
+    return go();
+  };
+})();
+</script>
+
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light" />
@@ -374,7 +432,7 @@ main{flex:1; width:100%; max-width:900px; margin:0 auto; padding:0 20px}
         <button class="btn" id="keyClear">Borrar</button>
         <button class="btn primary" id="keySave">Guardar</button>
       </div>
-      <div class="hint">Consíguela en platform.openai.com/api-keys · Modelo por defecto: gpt-4o-mini</div>
+      <div class="hint">Consíguela en platform.openai.com/api-keys · Modelo por defecto: gpt-6-luna</div>
     </div>
   </div>
 </div>
@@ -403,13 +461,13 @@ main{flex:1; width:100%; max-width:900px; margin:0 auto; padding:0 20px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 
 <script id="app">
-window.__APP_CONFIG__ = {"id": "farmacotutor", "title": "FarmacoTutor·AI", "tagline": "Farmacología y prescripción razonada", "category": "Docencia", "cat": "#0E8C7F", "phase": "Preclínica · 2º–3º", "welcome": "Elige un grupo terapéutico abajo o dime un fármaco. Trabajamos mecanismo, indicaciones y efectos adversos desde la diana, practicamos cálculo de dosis con verificación de unidades, interacciones y decisiones de prescripción razonadas.", "systemPrompt": "Eres un tutor de la Facultad de Medicina de la Universidad Miguel Hernández (UMH). Te diriges a estudiantes de grado. Responde en español claro y riguroso, con nivel de facultad, apoyándote en fisiopatología y evidencia. Usa Markdown (encabezados, listas, negritas) para estructurar. Sé conciso pero completo. Eres una herramienta de APRENDIZAJE: no diagnosticas ni tratas pacientes reales; si el estudiante plantea un caso real y urgente, recuérdale que debe consultar a un clínico responsable. Enseñas farmacología clínica agrupando por mecanismo y razonando desde la diana (no como fichas sueltas). Estructura: mecanismo de acción, farmacocinética relevante, indicaciones, efectos adversos y contraindicaciones DEDUCIDOS del mecanismo, e interacciones clave. En el modo cálculo de dosis: pide los datos, guía paso a paso mostrando las unidades, verifica el resultado, redondea a la presentación real y señala rangos peligrosos; deja que el estudiante lo intente antes de dar el número. Cuando ayude, genera un DIAGRAMA en un bloque ```mermaid``` con 'flowchart TD' para una cascada de mecanismo (diana → efecto → uso/efecto adverso) o un árbol de elección de fármaco. Mantenlo legible (5-9 nodos). Respeta los modos interacciones, prescripción razonada y «del receptor al efecto adverso», pidiendo siempre que el estudiante razone antes de validar. SEGURIDAD: recuerda de forma explícita que es una herramienta DOCENTE; los cálculos y decisiones deben verificarse siempre con la ficha técnica (AEMPS/CIMA) y un clínico responsable, y NUNCA sustituyen la prescripción real.", "chips": ["Mecanismo de los IECA", "Practicar cálculo de dosis pediátrica", "Interacciones de la warfarina", "¿Betabloqueante cardioselectivo o no?"], "placeholder": "Fármaco, grupo o cálculo de dosis…", "temperature": 0.35, "vision": false, "defaultModel": "gpt-4o-mini", "menu": [{"group": "Cardiovascular", "items": ["IECA y ARA-II", "Betabloqueantes", "Diuréticos", "Anticoagulantes y antiagregantes"]}, {"group": "Antimicrobianos", "items": ["Betalactámicos", "Elección de antibiótico empírico", "Cálculo de dosis de vancomicina", "Antifúngicos"]}, {"group": "SNC y analgesia", "items": ["Opioides", "AINE y paracetamol", "Benzodiacepinas", "Antidepresivos ISRS"]}, {"group": "Endocrino y respiratorio", "items": ["Insulina y antidiabéticos", "Corticoides", "Broncodilatadores", "Levotiroxina"]}], "actions": [{"label": "🧮 Calcular dosis", "send": "Activa el modo «cálculo de dosis guiado»: pídeme los datos necesarios (peso, edad, función renal, concentración/presentación disponible, pauta) y guía el cálculo paso a paso mostrando las UNIDADES en cada paso. Verifica el resultado, redondéalo a una presentación real y avísame si cae en un rango peligroso. No des el número final hasta que yo lo intente."}, {"label": "⚠️ Interacciones", "send": "Activa el modo «interacciones»: pídeme dos o más fármacos y razona el mecanismo de la interacción (farmacocinética vs farmacodinámica, inducción/inhibición de CYP), su relevancia clínica y cómo se maneja."}, {"label": "📝 Prescripción razonada", "send": "Plantéame un caso clínico breve y pídeme que elija fármaco, dosis y vía; luego dame feedback sobre la adecuación, alternativas, contraindicaciones y por qué un fármaco sería preferible a otro."}, {"label": "🎯 Del receptor al efecto adverso", "send": "Elige un fármaco o diana y pídeme que DEDUZCA sus efectos adversos y contraindicaciones desde el mecanismo (no de memoria); corrige mi razonamiento."}, {"label": "🃏 Tarjeta de alto rendimiento", "send": "Propón una tarjeta con el formato «fármaco → mecanismo → indicación → efecto adverso clave → interacción importante» para que la guarde."}], "levels": [{"label": "Voy justo", "directive": "El estudiante va justo: explica cada término, pasos pequeños, y en los cálculos muestra todas las unidades y comprobaciones."}, {"label": "Nivel medio", "directive": "Nivel intermedio: ritmo normal, puedes asumir farmacología general básica."}, {"label": "Quiero afinar", "directive": "Nivel avanzado: integra farmacocinética/dinámica fina, ajuste por función renal/hepática, interacciones por CYP y matices de prescripción."}], "langs": null, "mastery": "grupo", "flashcards": true, "docs": false};
+window.__APP_CONFIG__ = {"id": "farmacotutor", "title": "FarmacoTutor·AI", "tagline": "Farmacología y prescripción razonada", "category": "Docencia", "cat": "#0E8C7F", "phase": "Preclínica · 2º–3º", "welcome": "Elige un grupo terapéutico abajo o dime un fármaco. Trabajamos mecanismo, indicaciones y efectos adversos desde la diana, practicamos cálculo de dosis con verificación de unidades, interacciones y decisiones de prescripción razonadas.", "systemPrompt": "Eres un tutor de la Facultad de Medicina de la Universidad Miguel Hernández (UMH). Te diriges a estudiantes de grado. Responde en español claro y riguroso, con nivel de facultad, apoyándote en fisiopatología y evidencia. Usa Markdown (encabezados, listas, negritas) para estructurar. Sé conciso pero completo. Eres una herramienta de APRENDIZAJE: no diagnosticas ni tratas pacientes reales; si el estudiante plantea un caso real y urgente, recuérdale que debe consultar a un clínico responsable. Enseñas farmacología clínica agrupando por mecanismo y razonando desde la diana (no como fichas sueltas). Estructura: mecanismo de acción, farmacocinética relevante, indicaciones, efectos adversos y contraindicaciones DEDUCIDOS del mecanismo, e interacciones clave. En el modo cálculo de dosis: pide los datos, guía paso a paso mostrando las unidades, verifica el resultado, redondea a la presentación real y señala rangos peligrosos; deja que el estudiante lo intente antes de dar el número. Cuando ayude, genera un DIAGRAMA en un bloque ```mermaid``` con 'flowchart TD' para una cascada de mecanismo (diana → efecto → uso/efecto adverso) o un árbol de elección de fármaco. Mantenlo legible (5-9 nodos). Respeta los modos interacciones, prescripción razonada y «del receptor al efecto adverso», pidiendo siempre que el estudiante razone antes de validar. SEGURIDAD: recuerda de forma explícita que es una herramienta DOCENTE; los cálculos y decisiones deben verificarse siempre con la ficha técnica (AEMPS/CIMA) y un clínico responsable, y NUNCA sustituyen la prescripción real.", "chips": ["Mecanismo de los IECA", "Practicar cálculo de dosis pediátrica", "Interacciones de la warfarina", "¿Betabloqueante cardioselectivo o no?"], "placeholder": "Fármaco, grupo o cálculo de dosis…", "temperature": 0.35, "vision": false, "defaultModel": "gpt-6-luna", "menu": [{"group": "Cardiovascular", "items": ["IECA y ARA-II", "Betabloqueantes", "Diuréticos", "Anticoagulantes y antiagregantes"]}, {"group": "Antimicrobianos", "items": ["Betalactámicos", "Elección de antibiótico empírico", "Cálculo de dosis de vancomicina", "Antifúngicos"]}, {"group": "SNC y analgesia", "items": ["Opioides", "AINE y paracetamol", "Benzodiacepinas", "Antidepresivos ISRS"]}, {"group": "Endocrino y respiratorio", "items": ["Insulina y antidiabéticos", "Corticoides", "Broncodilatadores", "Levotiroxina"]}], "actions": [{"label": "🧮 Calcular dosis", "send": "Activa el modo «cálculo de dosis guiado»: pídeme los datos necesarios (peso, edad, función renal, concentración/presentación disponible, pauta) y guía el cálculo paso a paso mostrando las UNIDADES en cada paso. Verifica el resultado, redondéalo a una presentación real y avísame si cae en un rango peligroso. No des el número final hasta que yo lo intente."}, {"label": "⚠️ Interacciones", "send": "Activa el modo «interacciones»: pídeme dos o más fármacos y razona el mecanismo de la interacción (farmacocinética vs farmacodinámica, inducción/inhibición de CYP), su relevancia clínica y cómo se maneja."}, {"label": "📝 Prescripción razonada", "send": "Plantéame un caso clínico breve y pídeme que elija fármaco, dosis y vía; luego dame feedback sobre la adecuación, alternativas, contraindicaciones y por qué un fármaco sería preferible a otro."}, {"label": "🎯 Del receptor al efecto adverso", "send": "Elige un fármaco o diana y pídeme que DEDUZCA sus efectos adversos y contraindicaciones desde el mecanismo (no de memoria); corrige mi razonamiento."}, {"label": "🃏 Tarjeta de alto rendimiento", "send": "Propón una tarjeta con el formato «fármaco → mecanismo → indicación → efecto adverso clave → interacción importante» para que la guarde."}], "levels": [{"label": "Voy justo", "directive": "El estudiante va justo: explica cada término, pasos pequeños, y en los cálculos muestra todas las unidades y comprobaciones."}, {"label": "Nivel medio", "directive": "Nivel intermedio: ritmo normal, puedes asumir farmacología general básica."}, {"label": "Quiero afinar", "directive": "Nivel avanzado: integra farmacocinética/dinámica fina, ajuste por función renal/hepática, interacciones por CYP y matices de prescripción."}], "langs": null, "mastery": "grupo", "flashcards": true, "docs": false};
 const APP_CONFIG = (typeof window!=="undefined" && window.__APP_CONFIG__) || {
   id:"kernel", title:"MEDIA·UMH · kernel", tagline:"plantilla base",
   category:"Utilidades", cat:"#0E8C7F", phase:"—",
   welcome:"Este es el kernel base. Inyecta APP_CONFIG para especializarlo.",
   systemPrompt:"Eres un tutor de medicina para estudiantes de la UMH.",
-  chips:[], placeholder:"Escribe aquí…", temperature:0.5, vision:false, defaultModel:"gpt-4o-mini",
+  chips:[], placeholder:"Escribe aquí…", temperature:0.5, vision:false, defaultModel:"gpt-6-luna",
   menu:null,       // [{group, items:[...]}]  menú de arranque agrupado (si no, usa chips)
   actions:null,    // [{label, send} | {label, cycle:[...]}]  botones de acción / pistas graduadas
   levels:null,     // [{label, directive}]  selector de profundidad
@@ -421,7 +479,7 @@ const APP_CONFIG = (typeof window!=="undefined" && window.__APP_CONFIG__) || {
 
 /* ---------- Constantes ---------- */
 const MODELS = [
-  {id:"gpt-4o-mini", label:"gpt-4o-mini"},
+  {id:"gpt-6-luna", label:"gpt-6-luna"}, {id:"gpt-4o-mini", label:"gpt-4o-mini"},
   {id:"gpt-4o",      label:"gpt-4o"},
   {id:"gpt-4.1-mini",label:"gpt-4.1-mini"},
   {id:"gpt-4.1",     label:"gpt-4.1"}

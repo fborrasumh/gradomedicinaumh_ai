@@ -1,6 +1,64 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script id="gpt6-luna-shim">
+/* gpt-6-luna: modelo por defecto con temperatura=1 (actualización sep-2026).
+   Adapta las peticiones a la API de OpenAI para la familia gpt-6:
+   temperature=1, max_tokens -> max_completion_tokens (con margen para razonamiento)
+   y reintento automático si la API rechaza algún parámetro. */
+(function(){
+  var NEW='gpt-6-luna', OLD='gpt-4o-mini';
+  try{
+    if(!localStorage.getItem('__gpt6_luna_mig_v1')){
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i), v=localStorage.getItem(k);
+        if(v===OLD||v==='"'+OLD+'"'){ localStorage.setItem(k, v.replace(OLD,NEW)); continue; }
+        if(v && v.length<20000 && v.charAt(0)==='{' && v.indexOf(OLD)>=0){
+          try{ var o=JSON.parse(v), ch=false;
+            for(var p in o){ if(o[p]===OLD){ o[p]=NEW; ch=true; } }
+            if(ch) localStorage.setItem(k, JSON.stringify(o));
+          }catch(e){}
+        }
+      }
+      localStorage.setItem('__gpt6_luna_mig_v1','1');
+    }
+  }catch(e){}
+  var of=window.fetch; if(!of) return;
+  function adapt(url,b){
+    if(!b || typeof b.model!=='string' || !/^gpt-6/.test(b.model)) return false;
+    b.temperature=1;
+    ['top_p','frequency_penalty','presence_penalty','logit_bias','logprobs','top_logprobs'].forEach(function(p){ delete b[p]; });
+    if(/chat\/completions/.test(url) && b.max_tokens!=null){
+      if(b.max_completion_tokens==null) b.max_completion_tokens=Math.min(128000, (+b.max_tokens||0)+6000);
+      delete b.max_tokens;
+    }
+    return true;
+  }
+  window.fetch=function(input,init){
+    var url=typeof input==='string'?input:(input&&input.url)||'';
+    if(!/api\.openai\.com\/v1\/(chat\/completions|responses)/.test(url) || !init || typeof init.body!=='string') return of.apply(this,arguments);
+    var b; try{ b=JSON.parse(init.body); }catch(e){ return of.apply(this,arguments); }
+    if(!adapt(url,b)) return of.apply(this,arguments);
+    var self=this, tries=0;
+    function go(){
+      var ini=Object.assign({},init,{body:JSON.stringify(b)});
+      return of.call(self,input,ini).then(function(r){
+        if(r.status!==400 || tries>=3) return r;
+        return r.clone().json().then(function(j){
+          var err=(j&&j.error)||{}, p=err.param, msg=String(err.message||'');
+          if(!p){ var m=msg.match(/'([a-z_]+)'/); if(m) p=m[1]; }
+          if(p && b.hasOwnProperty(p) && /unsupported|not supported|does not support|only the default/i.test(msg)){
+            delete b[p]; tries++; return go();
+          }
+          return r;
+        },function(){ return r; });
+      });
+    }
+    return go();
+  };
+})();
+</script>
+
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light" />
@@ -374,7 +432,7 @@ main{flex:1; width:100%; max-width:900px; margin:0 auto; padding:0 20px}
         <button class="btn" id="keyClear">Borrar</button>
         <button class="btn primary" id="keySave">Guardar</button>
       </div>
-      <div class="hint">Consíguela en platform.openai.com/api-keys · Modelo por defecto: gpt-4o-mini</div>
+      <div class="hint">Consíguela en platform.openai.com/api-keys · Modelo por defecto: gpt-6-luna</div>
     </div>
   </div>
 </div>
@@ -403,13 +461,13 @@ main{flex:1; width:100%; max-width:900px; margin:0 auto; padding:0 20px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 
 <script id="app">
-window.__APP_CONFIG__ = {"id": "bioestadmed", "title": "BioestadMed·AI", "tagline": "Estadística de artículos médicos", "category": "Investigación", "cat": "#3D5A98", "phase": "Transversal", "welcome": "Dime qué test o concepto estadístico te aparece en un paper, o describe tus variables y te ayudo a elegir el análisis correcto. Interpretamos p e intervalos de confianza con honestidad, leemos tablas y figuras, y traducimos el resultado a lenguaje clínico. Complementa a MBE·Trainer.", "systemPrompt": "Eres un tutor de la Facultad de Medicina de la Universidad Miguel Hernández (UMH). Te diriges a estudiantes de grado. Responde en español claro y riguroso, con nivel de facultad, apoyándote en fisiopatología y evidencia. Usa Markdown (encabezados, listas, negritas) para estructurar. Sé conciso pero completo. Eres una herramienta de APRENDIZAJE: no diagnosticas ni tratas pacientes reales; si el estudiante plantea un caso real y urgente, recuérdale que debe consultar a un clínico responsable. Enseñas bioestadística aplicada a la lectura de artículos médicos (autor: profesor de Estadística de la UMH; mantén el rigor). Para cada concepto: qué mide, supuestos y cuándo es apropiado, cómo se interpreta el resultado en términos clínicos, y errores frecuentes de interpretación (confundir significación estadística con relevancia clínica, multiplicidad, p mal entendida, correlación vs causalidad). En el modo «elige el test», guía con preguntas sobre el tipo de variables, número de grupos, datos apareados/independientes y distribución hasta el test adecuado, explicando supuestos. Cuando ayude, genera un DIAGRAMA en un bloque ```mermaid``` con 'flowchart TD' del árbol de decisión para elegir el test estadístico. Usa ejemplos médicos y prioriza la intuición correcta sobre la fórmula, pero da la fórmula si se pide. Traduce siempre el resultado a lenguaje clínico. Pide que el estudiante razone antes de validar. No inventes datos ni resultados que no conozcas con seguridad.", "chips": ["¿Cuándo se usa t de Student vs ANOVA?", "Interpretar un valor p y un IC95%", "¿Qué es un análisis de supervivencia?", "Regresión logística en medicina"], "placeholder": "Test, medida o describe tus variables…", "temperature": 0.3, "vision": false, "defaultModel": "gpt-4o-mini", "menu": [{"group": "Elegir el análisis", "items": ["¿Cuándo t de Student vs ANOVA?", "Comparar proporciones (chi-cuadrado)", "Pruebas paramétricas vs no paramétricas", "Datos apareados vs independientes"]}, {"group": "Interpretar resultados", "items": ["Interpretar un valor p y un IC95%", "Tamaño del efecto y potencia", "Regresión logística en medicina", "¿Qué es un análisis de supervivencia?"]}, {"group": "Leer el paper", "items": ["Leer una curva de Kaplan-Meier", "Interpretar un forest plot", "Tabla de características basales", "Significación estadística vs relevancia clínica"]}], "actions": [{"label": "🎯 Elige el test correcto", "send": "Activa el modo «elige el test»: pregúntame por el tipo de variables (cuantitativa/cualitativa), el número de grupos, si son datos apareados o independientes y la distribución, y guíame hasta el test adecuado explicando el porqué y sus supuestos."}, {"label": "📉 Interpretar p e IC", "send": "Ayúdame a interpretar correctamente un valor p y un intervalo de confianza en términos clínicos, y explícame qué NO significan (errores frecuentes), distinguiendo significación estadística de relevancia clínica."}, {"label": "📊 Leer tabla/figura", "send": "Explícame cómo se lee la tabla o figura típica de un paper (tabla de características basales, curva de Kaplan-Meier, forest plot, gráfico de dispersión o Bland-Altman): qué mirar y cómo interpretarla. Puedo describírtela."}, {"label": "🩺 Traducir a clínica", "send": "Traduce este resultado estadístico a lenguaje clínico claro: qué significa para un paciente concreto y cómo cambiaría (o no) una decisión."}, {"label": "⚠️ Trampas frecuentes", "send": "Señálame las trampas de interpretación relevantes aquí (multiplicidad de comparaciones, significación vs relevancia, correlación vs causalidad, sobreajuste, p-hacking) y cómo detectarlas."}, {"label": "🃏 Tarjeta de alto rendimiento", "send": "Propón una tarjeta con un concepto estadístico clave (qué mide, cuándo se usa, cómo se interpreta, error típico) para que la guarde."}], "levels": [{"label": "Voy justo", "directive": "El estudiante va justo: intuición antes que fórmula, define cada término y usa ejemplos médicos sencillos."}, {"label": "Nivel medio", "directive": "Nivel intermedio: ritmo normal, aplica los conceptos a resultados de artículos."}, {"label": "Quiero afinar", "directive": "Nivel avanzado: supuestos de cada test, potencia, tamaño muestral, multiplicidad y modelos multivariantes."}], "langs": null, "mastery": "concepto estadístico", "flashcards": true, "docs": false};
+window.__APP_CONFIG__ = {"id": "bioestadmed", "title": "BioestadMed·AI", "tagline": "Estadística de artículos médicos", "category": "Investigación", "cat": "#3D5A98", "phase": "Transversal", "welcome": "Dime qué test o concepto estadístico te aparece en un paper, o describe tus variables y te ayudo a elegir el análisis correcto. Interpretamos p e intervalos de confianza con honestidad, leemos tablas y figuras, y traducimos el resultado a lenguaje clínico. Complementa a MBE·Trainer.", "systemPrompt": "Eres un tutor de la Facultad de Medicina de la Universidad Miguel Hernández (UMH). Te diriges a estudiantes de grado. Responde en español claro y riguroso, con nivel de facultad, apoyándote en fisiopatología y evidencia. Usa Markdown (encabezados, listas, negritas) para estructurar. Sé conciso pero completo. Eres una herramienta de APRENDIZAJE: no diagnosticas ni tratas pacientes reales; si el estudiante plantea un caso real y urgente, recuérdale que debe consultar a un clínico responsable. Enseñas bioestadística aplicada a la lectura de artículos médicos (autor: profesor de Estadística de la UMH; mantén el rigor). Para cada concepto: qué mide, supuestos y cuándo es apropiado, cómo se interpreta el resultado en términos clínicos, y errores frecuentes de interpretación (confundir significación estadística con relevancia clínica, multiplicidad, p mal entendida, correlación vs causalidad). En el modo «elige el test», guía con preguntas sobre el tipo de variables, número de grupos, datos apareados/independientes y distribución hasta el test adecuado, explicando supuestos. Cuando ayude, genera un DIAGRAMA en un bloque ```mermaid``` con 'flowchart TD' del árbol de decisión para elegir el test estadístico. Usa ejemplos médicos y prioriza la intuición correcta sobre la fórmula, pero da la fórmula si se pide. Traduce siempre el resultado a lenguaje clínico. Pide que el estudiante razone antes de validar. No inventes datos ni resultados que no conozcas con seguridad.", "chips": ["¿Cuándo se usa t de Student vs ANOVA?", "Interpretar un valor p y un IC95%", "¿Qué es un análisis de supervivencia?", "Regresión logística en medicina"], "placeholder": "Test, medida o describe tus variables…", "temperature": 0.3, "vision": false, "defaultModel": "gpt-6-luna", "menu": [{"group": "Elegir el análisis", "items": ["¿Cuándo t de Student vs ANOVA?", "Comparar proporciones (chi-cuadrado)", "Pruebas paramétricas vs no paramétricas", "Datos apareados vs independientes"]}, {"group": "Interpretar resultados", "items": ["Interpretar un valor p y un IC95%", "Tamaño del efecto y potencia", "Regresión logística en medicina", "¿Qué es un análisis de supervivencia?"]}, {"group": "Leer el paper", "items": ["Leer una curva de Kaplan-Meier", "Interpretar un forest plot", "Tabla de características basales", "Significación estadística vs relevancia clínica"]}], "actions": [{"label": "🎯 Elige el test correcto", "send": "Activa el modo «elige el test»: pregúntame por el tipo de variables (cuantitativa/cualitativa), el número de grupos, si son datos apareados o independientes y la distribución, y guíame hasta el test adecuado explicando el porqué y sus supuestos."}, {"label": "📉 Interpretar p e IC", "send": "Ayúdame a interpretar correctamente un valor p y un intervalo de confianza en términos clínicos, y explícame qué NO significan (errores frecuentes), distinguiendo significación estadística de relevancia clínica."}, {"label": "📊 Leer tabla/figura", "send": "Explícame cómo se lee la tabla o figura típica de un paper (tabla de características basales, curva de Kaplan-Meier, forest plot, gráfico de dispersión o Bland-Altman): qué mirar y cómo interpretarla. Puedo describírtela."}, {"label": "🩺 Traducir a clínica", "send": "Traduce este resultado estadístico a lenguaje clínico claro: qué significa para un paciente concreto y cómo cambiaría (o no) una decisión."}, {"label": "⚠️ Trampas frecuentes", "send": "Señálame las trampas de interpretación relevantes aquí (multiplicidad de comparaciones, significación vs relevancia, correlación vs causalidad, sobreajuste, p-hacking) y cómo detectarlas."}, {"label": "🃏 Tarjeta de alto rendimiento", "send": "Propón una tarjeta con un concepto estadístico clave (qué mide, cuándo se usa, cómo se interpreta, error típico) para que la guarde."}], "levels": [{"label": "Voy justo", "directive": "El estudiante va justo: intuición antes que fórmula, define cada término y usa ejemplos médicos sencillos."}, {"label": "Nivel medio", "directive": "Nivel intermedio: ritmo normal, aplica los conceptos a resultados de artículos."}, {"label": "Quiero afinar", "directive": "Nivel avanzado: supuestos de cada test, potencia, tamaño muestral, multiplicidad y modelos multivariantes."}], "langs": null, "mastery": "concepto estadístico", "flashcards": true, "docs": false};
 const APP_CONFIG = (typeof window!=="undefined" && window.__APP_CONFIG__) || {
   id:"kernel", title:"MEDIA·UMH · kernel", tagline:"plantilla base",
   category:"Utilidades", cat:"#0E8C7F", phase:"—",
   welcome:"Este es el kernel base. Inyecta APP_CONFIG para especializarlo.",
   systemPrompt:"Eres un tutor de medicina para estudiantes de la UMH.",
-  chips:[], placeholder:"Escribe aquí…", temperature:0.5, vision:false, defaultModel:"gpt-4o-mini",
+  chips:[], placeholder:"Escribe aquí…", temperature:0.5, vision:false, defaultModel:"gpt-6-luna",
   menu:null,       // [{group, items:[...]}]  menú de arranque agrupado (si no, usa chips)
   actions:null,    // [{label, send} | {label, cycle:[...]}]  botones de acción / pistas graduadas
   levels:null,     // [{label, directive}]  selector de profundidad
@@ -421,7 +479,7 @@ const APP_CONFIG = (typeof window!=="undefined" && window.__APP_CONFIG__) || {
 
 /* ---------- Constantes ---------- */
 const MODELS = [
-  {id:"gpt-4o-mini", label:"gpt-4o-mini"},
+  {id:"gpt-6-luna", label:"gpt-6-luna"}, {id:"gpt-4o-mini", label:"gpt-4o-mini"},
   {id:"gpt-4o",      label:"gpt-4o"},
   {id:"gpt-4.1-mini",label:"gpt-4.1-mini"},
   {id:"gpt-4.1",     label:"gpt-4.1"}

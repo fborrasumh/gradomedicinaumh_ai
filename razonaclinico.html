@@ -1,6 +1,64 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script id="gpt6-luna-shim">
+/* gpt-6-luna: modelo por defecto con temperatura=1 (actualización sep-2026).
+   Adapta las peticiones a la API de OpenAI para la familia gpt-6:
+   temperature=1, max_tokens -> max_completion_tokens (con margen para razonamiento)
+   y reintento automático si la API rechaza algún parámetro. */
+(function(){
+  var NEW='gpt-6-luna', OLD='gpt-4o-mini';
+  try{
+    if(!localStorage.getItem('__gpt6_luna_mig_v1')){
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i), v=localStorage.getItem(k);
+        if(v===OLD||v==='"'+OLD+'"'){ localStorage.setItem(k, v.replace(OLD,NEW)); continue; }
+        if(v && v.length<20000 && v.charAt(0)==='{' && v.indexOf(OLD)>=0){
+          try{ var o=JSON.parse(v), ch=false;
+            for(var p in o){ if(o[p]===OLD){ o[p]=NEW; ch=true; } }
+            if(ch) localStorage.setItem(k, JSON.stringify(o));
+          }catch(e){}
+        }
+      }
+      localStorage.setItem('__gpt6_luna_mig_v1','1');
+    }
+  }catch(e){}
+  var of=window.fetch; if(!of) return;
+  function adapt(url,b){
+    if(!b || typeof b.model!=='string' || !/^gpt-6/.test(b.model)) return false;
+    b.temperature=1;
+    ['top_p','frequency_penalty','presence_penalty','logit_bias','logprobs','top_logprobs'].forEach(function(p){ delete b[p]; });
+    if(/chat\/completions/.test(url) && b.max_tokens!=null){
+      if(b.max_completion_tokens==null) b.max_completion_tokens=Math.min(128000, (+b.max_tokens||0)+6000);
+      delete b.max_tokens;
+    }
+    return true;
+  }
+  window.fetch=function(input,init){
+    var url=typeof input==='string'?input:(input&&input.url)||'';
+    if(!/api\.openai\.com\/v1\/(chat\/completions|responses)/.test(url) || !init || typeof init.body!=='string') return of.apply(this,arguments);
+    var b; try{ b=JSON.parse(init.body); }catch(e){ return of.apply(this,arguments); }
+    if(!adapt(url,b)) return of.apply(this,arguments);
+    var self=this, tries=0;
+    function go(){
+      var ini=Object.assign({},init,{body:JSON.stringify(b)});
+      return of.call(self,input,ini).then(function(r){
+        if(r.status!==400 || tries>=3) return r;
+        return r.clone().json().then(function(j){
+          var err=(j&&j.error)||{}, p=err.param, msg=String(err.message||'');
+          if(!p){ var m=msg.match(/'([a-z_]+)'/); if(m) p=m[1]; }
+          if(p && b.hasOwnProperty(p) && /unsupported|not supported|does not support|only the default/i.test(msg)){
+            delete b[p]; tries++; return go();
+          }
+          return r;
+        },function(){ return r; });
+      });
+    }
+    return go();
+  };
+})();
+</script>
+
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light" />
@@ -374,7 +432,7 @@ main{flex:1; width:100%; max-width:900px; margin:0 auto; padding:0 20px}
         <button class="btn" id="keyClear">Borrar</button>
         <button class="btn primary" id="keySave">Guardar</button>
       </div>
-      <div class="hint">Consíguela en platform.openai.com/api-keys · Modelo por defecto: gpt-4o-mini</div>
+      <div class="hint">Consíguela en platform.openai.com/api-keys · Modelo por defecto: gpt-6-luna</div>
     </div>
   </div>
 </div>
@@ -403,13 +461,13 @@ main{flex:1; width:100%; max-width:900px; margin:0 auto; padding:0 20px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 
 <script id="app">
-window.__APP_CONFIG__ = {"id": "razonaclinico", "title": "RazonaClínico·AI", "tagline": "Razonamiento hipotético-deductivo", "category": "Simulación", "cat": "#C77D1E", "phase": "Clínica · 4º–6º", "welcome": "Elige una presentación abajo o preséntame un caso. Entrenaremos tu razonamiento por etapas: representación del problema, hipótesis priorizadas, datos discriminantes y plan. Cuestiono tu proceso y nombro tus sesgos; no te doy el diagnóstico hasta que razones. Activa el modo guardia si quieres presión de tiempo.", "systemPrompt": "Eres un tutor de la Facultad de Medicina de la Universidad Miguel Hernández (UMH). Te diriges a estudiantes de grado. Responde en español claro y riguroso, con nivel de facultad, apoyándote en fisiopatología y evidencia. Usa Markdown (encabezados, listas, negritas) para estructurar. Sé conciso pero completo. Eres una herramienta de APRENDIZAJE: no diagnosticas ni tratas pacientes reales; si el estudiante plantea un caso real y urgente, recuérdale que debe consultar a un clínico responsable. Eres un preceptor clínico que entrena el PROCESO de razonamiento (modelo hipotético-deductivo, one-minute preceptor, illness scripts), no la memoria. Cuando presentes un caso, hazlo con REVELACIÓN POR ETAPAS (motivo → anamnesis → exploración → pruebas → resolución) y NO avances de etapa hasta que el estudiante haya producido hipótesis; en cada etapa pregúntale qué quiere buscar y por qué. Exige en su momento: (1) representación del problema en una frase con calificadores semánticos (one-liner); (2) 3-5 hipótesis priorizadas con justificación; (3) los diagnósticos «que no puedo fallar» y cómo se descartan; (4) el dato que confirmaría/descartaría cada hipótesis. Usa razonamiento bayesiano cualitativo (probabilidad pre-test y cómo la mueve cada hallazgo). Cuando detectes un sesgo cognitivo, NÓMBRALO (anclaje, cierre precoz, disponibilidad, confirmación) y enseña a corregirlo. No reveles el diagnóstico hasta que el estudiante haya razonado. Al cerrar, da FEEDBACK ESTRUCTURADO DEL PROCESO con una mini-rúbrica (representación, hipótesis, priorización, datos discriminantes, plan) y una perla clínica. Cuando ayude, genera un DIAGRAMA en un bloque ```mermaid``` con 'flowchart TD' del mapa de diferencial (representación → hipótesis priorizadas → datos discriminantes). Si el estudiante activa el modo guardia, aumenta el ritmo y la presión hacia un diagnóstico de trabajo y plan inicial. Inventa casos realistas y dosifica la información.", "chips": ["Varón 58a, dolor torácico agudo", "Mujer 30a, cefalea y fiebre", "Quiero practicar el diagnóstico diferencial", "Dame un caso sorpresa"], "placeholder": "Describe el caso o pide uno…", "temperature": 0.5, "vision": false, "defaultModel": "gpt-4o-mini", "menu": [{"group": "Síntomas cardinales", "items": ["Dolor torácico agudo", "Disnea", "Dolor abdominal", "Cefalea"]}, {"group": "Urgencias frecuentes", "items": ["Síncope", "Fiebre sin foco", "Alteración del nivel de consciencia", "Shock"]}, {"group": "Modo práctica", "items": ["Dame un caso sorpresa", "Caso de dificultad MIR", "Quiero practicar el diagnóstico diferencial", "Caso ambulatorio típico"]}], "actions": [{"label": "▶️ Caso progresivo", "send": "Preséntame un caso con REVELACIÓN POR ETAPAS: dame primero solo el motivo de consulta y datos iniciales, y no avances a la siguiente etapa (anamnesis → exploración → pruebas) hasta que yo haya dado mis hipótesis en la etapa actual. Ve pidiéndome qué quiero preguntar/explorar/solicitar y por qué."}, {"label": "🧷 One-liner", "send": "Pídeme que resuma el caso en UNA frase (representación del problema) con calificadores semánticos (edad, agudo/crónico, patrón) antes de lanzar el diferencial, y corrige mi one-liner."}, {"label": "🚑 Must-not-miss", "send": "Antes de seguir, pídeme que enumere los diagnósticos «que no puedo fallar» (amenazas vitales) para esta presentación y que justifique cómo los descarto."}, {"label": "🧠 ¿Qué sesgo tengo?", "send": "Revisa mi razonamiento hasta aquí e identifica y NOMBRA cualquier sesgo cognitivo que detectes (anclaje, cierre precoz, disponibilidad, confirmación), explicándome cómo corregirlo."}, {"label": "📊 Bayesiano", "send": "Trabaja el razonamiento bayesiano cualitativo: pídeme la probabilidad pre-test de mis hipótesis y cómo cada hallazgo la mueve a favor o en contra, sin números duros, para afinar la intuición."}, {"label": "📜 Illness script", "send": "Construyamos el illness script de mi hipótesis principal (epidemiología/factores de riesgo, fisiopatología, síntomas y signos, evolución típica) y compáralo con las alternativas del diferencial."}, {"label": "📋 Feedback del proceso", "send": "Evalúa mi razonamiento con una rúbrica del PROCESO (no solo si acerté): representación del problema, generación de hipótesis, priorización, uso de datos discriminantes y plan. Dame una nota por apartado y un objetivo de mejora."}, {"label": "🚨 Modo guardia (5 min)", "timer": 5, "send": "Inicia un «modo guardia» con presión de tiempo: preséntame un caso agudo y llévame a un diagnóstico de trabajo y un plan inicial en pocos minutos, exigiéndome priorizar lo urgente."}], "levels": [{"label": "4.º curso", "directive": "Nivel 4.º de grado: casos frecuentes y presentaciones típicas, ritmo tranquilo, guía la estructura del razonamiento."}, {"label": "5.º–6.º", "directive": "Nivel 5.º-6.º: casos con más matices y algún distractor, exige priorización y datos discriminantes."}, {"label": "Nivel MIR", "directive": "Nivel MIR/residente: casos complejos, presentaciones atípicas, distractores plausibles y exigencia alta en la justificación."}], "langs": null, "mastery": "presentación", "flashcards": true, "docs": false};
+window.__APP_CONFIG__ = {"id": "razonaclinico", "title": "RazonaClínico·AI", "tagline": "Razonamiento hipotético-deductivo", "category": "Simulación", "cat": "#C77D1E", "phase": "Clínica · 4º–6º", "welcome": "Elige una presentación abajo o preséntame un caso. Entrenaremos tu razonamiento por etapas: representación del problema, hipótesis priorizadas, datos discriminantes y plan. Cuestiono tu proceso y nombro tus sesgos; no te doy el diagnóstico hasta que razones. Activa el modo guardia si quieres presión de tiempo.", "systemPrompt": "Eres un tutor de la Facultad de Medicina de la Universidad Miguel Hernández (UMH). Te diriges a estudiantes de grado. Responde en español claro y riguroso, con nivel de facultad, apoyándote en fisiopatología y evidencia. Usa Markdown (encabezados, listas, negritas) para estructurar. Sé conciso pero completo. Eres una herramienta de APRENDIZAJE: no diagnosticas ni tratas pacientes reales; si el estudiante plantea un caso real y urgente, recuérdale que debe consultar a un clínico responsable. Eres un preceptor clínico que entrena el PROCESO de razonamiento (modelo hipotético-deductivo, one-minute preceptor, illness scripts), no la memoria. Cuando presentes un caso, hazlo con REVELACIÓN POR ETAPAS (motivo → anamnesis → exploración → pruebas → resolución) y NO avances de etapa hasta que el estudiante haya producido hipótesis; en cada etapa pregúntale qué quiere buscar y por qué. Exige en su momento: (1) representación del problema en una frase con calificadores semánticos (one-liner); (2) 3-5 hipótesis priorizadas con justificación; (3) los diagnósticos «que no puedo fallar» y cómo se descartan; (4) el dato que confirmaría/descartaría cada hipótesis. Usa razonamiento bayesiano cualitativo (probabilidad pre-test y cómo la mueve cada hallazgo). Cuando detectes un sesgo cognitivo, NÓMBRALO (anclaje, cierre precoz, disponibilidad, confirmación) y enseña a corregirlo. No reveles el diagnóstico hasta que el estudiante haya razonado. Al cerrar, da FEEDBACK ESTRUCTURADO DEL PROCESO con una mini-rúbrica (representación, hipótesis, priorización, datos discriminantes, plan) y una perla clínica. Cuando ayude, genera un DIAGRAMA en un bloque ```mermaid``` con 'flowchart TD' del mapa de diferencial (representación → hipótesis priorizadas → datos discriminantes). Si el estudiante activa el modo guardia, aumenta el ritmo y la presión hacia un diagnóstico de trabajo y plan inicial. Inventa casos realistas y dosifica la información.", "chips": ["Varón 58a, dolor torácico agudo", "Mujer 30a, cefalea y fiebre", "Quiero practicar el diagnóstico diferencial", "Dame un caso sorpresa"], "placeholder": "Describe el caso o pide uno…", "temperature": 0.5, "vision": false, "defaultModel": "gpt-6-luna", "menu": [{"group": "Síntomas cardinales", "items": ["Dolor torácico agudo", "Disnea", "Dolor abdominal", "Cefalea"]}, {"group": "Urgencias frecuentes", "items": ["Síncope", "Fiebre sin foco", "Alteración del nivel de consciencia", "Shock"]}, {"group": "Modo práctica", "items": ["Dame un caso sorpresa", "Caso de dificultad MIR", "Quiero practicar el diagnóstico diferencial", "Caso ambulatorio típico"]}], "actions": [{"label": "▶️ Caso progresivo", "send": "Preséntame un caso con REVELACIÓN POR ETAPAS: dame primero solo el motivo de consulta y datos iniciales, y no avances a la siguiente etapa (anamnesis → exploración → pruebas) hasta que yo haya dado mis hipótesis en la etapa actual. Ve pidiéndome qué quiero preguntar/explorar/solicitar y por qué."}, {"label": "🧷 One-liner", "send": "Pídeme que resuma el caso en UNA frase (representación del problema) con calificadores semánticos (edad, agudo/crónico, patrón) antes de lanzar el diferencial, y corrige mi one-liner."}, {"label": "🚑 Must-not-miss", "send": "Antes de seguir, pídeme que enumere los diagnósticos «que no puedo fallar» (amenazas vitales) para esta presentación y que justifique cómo los descarto."}, {"label": "🧠 ¿Qué sesgo tengo?", "send": "Revisa mi razonamiento hasta aquí e identifica y NOMBRA cualquier sesgo cognitivo que detectes (anclaje, cierre precoz, disponibilidad, confirmación), explicándome cómo corregirlo."}, {"label": "📊 Bayesiano", "send": "Trabaja el razonamiento bayesiano cualitativo: pídeme la probabilidad pre-test de mis hipótesis y cómo cada hallazgo la mueve a favor o en contra, sin números duros, para afinar la intuición."}, {"label": "📜 Illness script", "send": "Construyamos el illness script de mi hipótesis principal (epidemiología/factores de riesgo, fisiopatología, síntomas y signos, evolución típica) y compáralo con las alternativas del diferencial."}, {"label": "📋 Feedback del proceso", "send": "Evalúa mi razonamiento con una rúbrica del PROCESO (no solo si acerté): representación del problema, generación de hipótesis, priorización, uso de datos discriminantes y plan. Dame una nota por apartado y un objetivo de mejora."}, {"label": "🚨 Modo guardia (5 min)", "timer": 5, "send": "Inicia un «modo guardia» con presión de tiempo: preséntame un caso agudo y llévame a un diagnóstico de trabajo y un plan inicial en pocos minutos, exigiéndome priorizar lo urgente."}], "levels": [{"label": "4.º curso", "directive": "Nivel 4.º de grado: casos frecuentes y presentaciones típicas, ritmo tranquilo, guía la estructura del razonamiento."}, {"label": "5.º–6.º", "directive": "Nivel 5.º-6.º: casos con más matices y algún distractor, exige priorización y datos discriminantes."}, {"label": "Nivel MIR", "directive": "Nivel MIR/residente: casos complejos, presentaciones atípicas, distractores plausibles y exigencia alta en la justificación."}], "langs": null, "mastery": "presentación", "flashcards": true, "docs": false};
 const APP_CONFIG = (typeof window!=="undefined" && window.__APP_CONFIG__) || {
   id:"kernel", title:"MEDIA·UMH · kernel", tagline:"plantilla base",
   category:"Utilidades", cat:"#0E8C7F", phase:"—",
   welcome:"Este es el kernel base. Inyecta APP_CONFIG para especializarlo.",
   systemPrompt:"Eres un tutor de medicina para estudiantes de la UMH.",
-  chips:[], placeholder:"Escribe aquí…", temperature:0.5, vision:false, defaultModel:"gpt-4o-mini",
+  chips:[], placeholder:"Escribe aquí…", temperature:0.5, vision:false, defaultModel:"gpt-6-luna",
   menu:null,       // [{group, items:[...]}]  menú de arranque agrupado (si no, usa chips)
   actions:null,    // [{label, send} | {label, cycle:[...]}]  botones de acción / pistas graduadas
   levels:null,     // [{label, directive}]  selector de profundidad
@@ -421,7 +479,7 @@ const APP_CONFIG = (typeof window!=="undefined" && window.__APP_CONFIG__) || {
 
 /* ---------- Constantes ---------- */
 const MODELS = [
-  {id:"gpt-4o-mini", label:"gpt-4o-mini"},
+  {id:"gpt-6-luna", label:"gpt-6-luna"}, {id:"gpt-4o-mini", label:"gpt-4o-mini"},
   {id:"gpt-4o",      label:"gpt-4o"},
   {id:"gpt-4.1-mini",label:"gpt-4.1-mini"},
   {id:"gpt-4.1",     label:"gpt-4.1"}

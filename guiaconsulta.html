@@ -1,6 +1,64 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script id="gpt6-luna-shim">
+/* gpt-6-luna: modelo por defecto con temperatura=1 (actualización sep-2026).
+   Adapta las peticiones a la API de OpenAI para la familia gpt-6:
+   temperature=1, max_tokens -> max_completion_tokens (con margen para razonamiento)
+   y reintento automático si la API rechaza algún parámetro. */
+(function(){
+  var NEW='gpt-6-luna', OLD='gpt-4o-mini';
+  try{
+    if(!localStorage.getItem('__gpt6_luna_mig_v1')){
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i), v=localStorage.getItem(k);
+        if(v===OLD||v==='"'+OLD+'"'){ localStorage.setItem(k, v.replace(OLD,NEW)); continue; }
+        if(v && v.length<20000 && v.charAt(0)==='{' && v.indexOf(OLD)>=0){
+          try{ var o=JSON.parse(v), ch=false;
+            for(var p in o){ if(o[p]===OLD){ o[p]=NEW; ch=true; } }
+            if(ch) localStorage.setItem(k, JSON.stringify(o));
+          }catch(e){}
+        }
+      }
+      localStorage.setItem('__gpt6_luna_mig_v1','1');
+    }
+  }catch(e){}
+  var of=window.fetch; if(!of) return;
+  function adapt(url,b){
+    if(!b || typeof b.model!=='string' || !/^gpt-6/.test(b.model)) return false;
+    b.temperature=1;
+    ['top_p','frequency_penalty','presence_penalty','logit_bias','logprobs','top_logprobs'].forEach(function(p){ delete b[p]; });
+    if(/chat\/completions/.test(url) && b.max_tokens!=null){
+      if(b.max_completion_tokens==null) b.max_completion_tokens=Math.min(128000, (+b.max_tokens||0)+6000);
+      delete b.max_tokens;
+    }
+    return true;
+  }
+  window.fetch=function(input,init){
+    var url=typeof input==='string'?input:(input&&input.url)||'';
+    if(!/api\.openai\.com\/v1\/(chat\/completions|responses)/.test(url) || !init || typeof init.body!=='string') return of.apply(this,arguments);
+    var b; try{ b=JSON.parse(init.body); }catch(e){ return of.apply(this,arguments); }
+    if(!adapt(url,b)) return of.apply(this,arguments);
+    var self=this, tries=0;
+    function go(){
+      var ini=Object.assign({},init,{body:JSON.stringify(b)});
+      return of.call(self,input,ini).then(function(r){
+        if(r.status!==400 || tries>=3) return r;
+        return r.clone().json().then(function(j){
+          var err=(j&&j.error)||{}, p=err.param, msg=String(err.message||'');
+          if(!p){ var m=msg.match(/'([a-z_]+)'/); if(m) p=m[1]; }
+          if(p && b.hasOwnProperty(p) && /unsupported|not supported|does not support|only the default/i.test(msg)){
+            delete b[p]; tries++; return go();
+          }
+          return r;
+        },function(){ return r; });
+      });
+    }
+    return go();
+  };
+})();
+</script>
+
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light" />
@@ -374,7 +432,7 @@ main{flex:1; width:100%; max-width:900px; margin:0 auto; padding:0 20px}
         <button class="btn" id="keyClear">Borrar</button>
         <button class="btn primary" id="keySave">Guardar</button>
       </div>
-      <div class="hint">Consíguela en platform.openai.com/api-keys · Modelo por defecto: gpt-4o-mini</div>
+      <div class="hint">Consíguela en platform.openai.com/api-keys · Modelo por defecto: gpt-6-luna</div>
     </div>
   </div>
 </div>
@@ -403,13 +461,13 @@ main{flex:1; width:100%; max-width:900px; margin:0 auto; padding:0 20px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 
 <script id="app">
-window.__APP_CONFIG__ = {"id": "guiaconsulta", "title": "GuíaConsulta·AI", "tagline": "Consulta de guías clínicas", "category": "Investigación", "cat": "#3D5A98", "phase": "Transversal", "welcome": "Carga una guía clínica (PDF o texto) con el botón del documento y pregúntame sobre ELLA: te respondo citando la página. Sin documento, respondo con el enfoque general de las guías y su grado de recomendación. Contrasta siempre con la versión vigente de la fuente oficial.", "systemPrompt": "Eres un tutor de la Facultad de Medicina de la Universidad Miguel Hernández (UMH). Te diriges a estudiantes de grado. Responde en español claro y riguroso, con nivel de facultad, apoyándote en fisiopatología y evidencia. Usa Markdown (encabezados, listas, negritas) para estructurar. Sé conciso pero completo. Eres una herramienta de APRENDIZAJE: no diagnosticas ni tratas pacientes reales; si el estudiante plantea un caso real y urgente, recuérdale que debe consultar a un clínico responsable. Respondes preguntas clínicas siguiendo el enfoque de las guías de práctica clínica, orientado a estudiantes. Si el estudiante ha cargado un DOCUMENTO, prioriza su contenido y CITA la página o sección de cada afirmación (formato «(pág. N)»); si algo no aparece en el documento, dilo explícitamente y sepáralo de tu conocimiento general. Sin documento, estructura: respuesta concisa → razonamiento → matices y grados de recomendación cuando los conozcas; distingue lo bien establecido de lo controvertido. ADVIERTE SIEMPRE de forma explícita que las guías se actualizan y que debe consultarse la versión vigente de la fuente oficial (sociedades científicas, GuíaSalud) antes de aplicar nada; NO inventes cifras, recomendaciones ni referencias que no conozcas con seguridad. Es material DOCENTE.", "chips": ["Manejo inicial de la hipertensión", "Criterios diagnósticos de diabetes", "Profilaxis antibiótica en cirugía", "¿Cuándo anticoagular en FA?"], "placeholder": "Carga una guía o haz una pregunta clínica…", "temperature": 0.3, "vision": false, "defaultModel": "gpt-4o-mini", "menu": [{"group": "Cargar y consultar", "items": ["Resúmeme la guía que he cargado", "¿Qué dice el documento sobre…?", "Puntos clave y recomendaciones", "Busca en el documento un dato concreto"]}, {"group": "Temas frecuentes", "items": ["Manejo inicial de la hipertensión", "Criterios diagnósticos de diabetes", "¿Cuándo anticoagular en fibrilación auricular?", "Profilaxis antibiótica en cirugía"]}, {"group": "Cómo usar la evidencia", "items": ["Grados de recomendación y niveles de evidencia", "¿Cómo sé si una guía está vigente?", "Guía vs práctica real", "Fuentes oficiales (sociedades, GuíaSalud)"]}], "actions": [{"label": "📄 Preguntar al documento", "send": "Voy a preguntarte sobre el documento que he cargado: responde basándote en su contenido y cita la página o sección de cada afirmación. Si algo no está en el documento, dímelo."}, {"label": "🧾 Resumen del documento", "send": "Hazme un resumen estructurado del documento cargado (puntos clave y recomendaciones principales) citando las páginas."}, {"label": "🧭 Enfoque de la guía", "send": "Dame el enfoque que siguen las guías de práctica clínica para esta cuestión, con el razonamiento y, cuando lo conozcas, el grado de recomendación."}, {"label": "⚖️ Grados de recomendación", "send": "Explícame los grados de recomendación y niveles de evidencia relevantes para esta cuestión y qué implican en la práctica."}, {"label": "⏳ ¿Está vigente?", "send": "Recuérdame que las guías se actualizan y dime cómo comprobar si esta recomendación sigue vigente y dónde consultar la fuente oficial."}, {"label": "🃏 Tarjeta de alto rendimiento", "send": "Propón una tarjeta con la recomendación clave de este tema (qué hacer, cuándo, grado de recomendación) para que la guarde."}], "levels": [{"label": "Voy justo", "directive": "El estudiante va justo: respuestas claras y estructuradas, define términos."}, {"label": "Nivel medio", "directive": "Nivel intermedio: enfoque de guía con el razonamiento detrás."}, {"label": "Quiero afinar", "directive": "Nivel avanzado: grados de recomendación, matices, áreas de controversia y excepciones."}], "langs": null, "mastery": "tema", "flashcards": true, "docs": true};
+window.__APP_CONFIG__ = {"id": "guiaconsulta", "title": "GuíaConsulta·AI", "tagline": "Consulta de guías clínicas", "category": "Investigación", "cat": "#3D5A98", "phase": "Transversal", "welcome": "Carga una guía clínica (PDF o texto) con el botón del documento y pregúntame sobre ELLA: te respondo citando la página. Sin documento, respondo con el enfoque general de las guías y su grado de recomendación. Contrasta siempre con la versión vigente de la fuente oficial.", "systemPrompt": "Eres un tutor de la Facultad de Medicina de la Universidad Miguel Hernández (UMH). Te diriges a estudiantes de grado. Responde en español claro y riguroso, con nivel de facultad, apoyándote en fisiopatología y evidencia. Usa Markdown (encabezados, listas, negritas) para estructurar. Sé conciso pero completo. Eres una herramienta de APRENDIZAJE: no diagnosticas ni tratas pacientes reales; si el estudiante plantea un caso real y urgente, recuérdale que debe consultar a un clínico responsable. Respondes preguntas clínicas siguiendo el enfoque de las guías de práctica clínica, orientado a estudiantes. Si el estudiante ha cargado un DOCUMENTO, prioriza su contenido y CITA la página o sección de cada afirmación (formato «(pág. N)»); si algo no aparece en el documento, dilo explícitamente y sepáralo de tu conocimiento general. Sin documento, estructura: respuesta concisa → razonamiento → matices y grados de recomendación cuando los conozcas; distingue lo bien establecido de lo controvertido. ADVIERTE SIEMPRE de forma explícita que las guías se actualizan y que debe consultarse la versión vigente de la fuente oficial (sociedades científicas, GuíaSalud) antes de aplicar nada; NO inventes cifras, recomendaciones ni referencias que no conozcas con seguridad. Es material DOCENTE.", "chips": ["Manejo inicial de la hipertensión", "Criterios diagnósticos de diabetes", "Profilaxis antibiótica en cirugía", "¿Cuándo anticoagular en FA?"], "placeholder": "Carga una guía o haz una pregunta clínica…", "temperature": 0.3, "vision": false, "defaultModel": "gpt-6-luna", "menu": [{"group": "Cargar y consultar", "items": ["Resúmeme la guía que he cargado", "¿Qué dice el documento sobre…?", "Puntos clave y recomendaciones", "Busca en el documento un dato concreto"]}, {"group": "Temas frecuentes", "items": ["Manejo inicial de la hipertensión", "Criterios diagnósticos de diabetes", "¿Cuándo anticoagular en fibrilación auricular?", "Profilaxis antibiótica en cirugía"]}, {"group": "Cómo usar la evidencia", "items": ["Grados de recomendación y niveles de evidencia", "¿Cómo sé si una guía está vigente?", "Guía vs práctica real", "Fuentes oficiales (sociedades, GuíaSalud)"]}], "actions": [{"label": "📄 Preguntar al documento", "send": "Voy a preguntarte sobre el documento que he cargado: responde basándote en su contenido y cita la página o sección de cada afirmación. Si algo no está en el documento, dímelo."}, {"label": "🧾 Resumen del documento", "send": "Hazme un resumen estructurado del documento cargado (puntos clave y recomendaciones principales) citando las páginas."}, {"label": "🧭 Enfoque de la guía", "send": "Dame el enfoque que siguen las guías de práctica clínica para esta cuestión, con el razonamiento y, cuando lo conozcas, el grado de recomendación."}, {"label": "⚖️ Grados de recomendación", "send": "Explícame los grados de recomendación y niveles de evidencia relevantes para esta cuestión y qué implican en la práctica."}, {"label": "⏳ ¿Está vigente?", "send": "Recuérdame que las guías se actualizan y dime cómo comprobar si esta recomendación sigue vigente y dónde consultar la fuente oficial."}, {"label": "🃏 Tarjeta de alto rendimiento", "send": "Propón una tarjeta con la recomendación clave de este tema (qué hacer, cuándo, grado de recomendación) para que la guarde."}], "levels": [{"label": "Voy justo", "directive": "El estudiante va justo: respuestas claras y estructuradas, define términos."}, {"label": "Nivel medio", "directive": "Nivel intermedio: enfoque de guía con el razonamiento detrás."}, {"label": "Quiero afinar", "directive": "Nivel avanzado: grados de recomendación, matices, áreas de controversia y excepciones."}], "langs": null, "mastery": "tema", "flashcards": true, "docs": true};
 const APP_CONFIG = (typeof window!=="undefined" && window.__APP_CONFIG__) || {
   id:"kernel", title:"MEDIA·UMH · kernel", tagline:"plantilla base",
   category:"Utilidades", cat:"#0E8C7F", phase:"—",
   welcome:"Este es el kernel base. Inyecta APP_CONFIG para especializarlo.",
   systemPrompt:"Eres un tutor de medicina para estudiantes de la UMH.",
-  chips:[], placeholder:"Escribe aquí…", temperature:0.5, vision:false, defaultModel:"gpt-4o-mini",
+  chips:[], placeholder:"Escribe aquí…", temperature:0.5, vision:false, defaultModel:"gpt-6-luna",
   menu:null,       // [{group, items:[...]}]  menú de arranque agrupado (si no, usa chips)
   actions:null,    // [{label, send} | {label, cycle:[...]}]  botones de acción / pistas graduadas
   levels:null,     // [{label, directive}]  selector de profundidad
@@ -421,7 +479,7 @@ const APP_CONFIG = (typeof window!=="undefined" && window.__APP_CONFIG__) || {
 
 /* ---------- Constantes ---------- */
 const MODELS = [
-  {id:"gpt-4o-mini", label:"gpt-4o-mini"},
+  {id:"gpt-6-luna", label:"gpt-6-luna"}, {id:"gpt-4o-mini", label:"gpt-4o-mini"},
   {id:"gpt-4o",      label:"gpt-4o"},
   {id:"gpt-4.1-mini",label:"gpt-4.1-mini"},
   {id:"gpt-4.1",     label:"gpt-4.1"}
